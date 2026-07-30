@@ -119,7 +119,7 @@ const TG_EVENT_LABELS = {
   admin_login_ok:   '🟢 Вход в админку',
   admin_login_fail: '🔴 Неудачный вход в админку',
   order_submit:     '📦 Новая заявка',
-  visit:            '👁 Визит',
+  visit:            '👁 Визит на сайт',
   request:          '🌐 Запрос',
 };
 
@@ -140,14 +140,32 @@ async function sendTelegram(text) {
   }
 }
 
-// Отправляем в Telegram только важные события (не каждый request)
-const TG_IMPORTANT = new Set(['admin_login_ok', 'admin_login_fail', 'order_submit']);
+// Кэш IP для дедупликации визитов — чтобы не спамить на каждый запрос
+const visitedIps = new Map(); // ip -> timestamp последнего уведомления
+const VISIT_NOTIFY_INTERVAL = 60 * 60 * 1000; // раз в час с одного IP
+
+// Все важные события + визиты с дедупликацией
+const TG_IMPORTANT = new Set(['admin_login_ok', 'admin_login_fail', 'order_submit', 'visit']);
 
 async function logVisitAndNotify(req, eventType, extra = {}) {
   await logVisit(req, eventType, extra);
+
   if (!TG_IMPORTANT.has(eventType)) return;
 
-  const ip    = getClientIp(req);
+  const ip = getClientIp(req);
+
+  // Для визитов — дедупликация: один IP раз в час
+  if (eventType === 'visit' || eventType === 'request') {
+    const last = visitedIps.get(ip);
+    if (last && Date.now() - last < VISIT_NOTIFY_INTERVAL) return;
+    visitedIps.set(ip, Date.now());
+    // Чистим кэш раз в час чтобы не росло в памяти
+    if (visitedIps.size > 5000) {
+      const cutoff = Date.now() - VISIT_NOTIFY_INTERVAL;
+      for (const [k, v] of visitedIps) { if (v < cutoff) visitedIps.delete(k); }
+    }
+  }
+
   const ua    = (req.headers['user-agent'] || '—').slice(0, 120);
   const label = TG_EVENT_LABELS[eventType] || eventType;
   const now   = new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' });
@@ -171,10 +189,11 @@ async function logVisitAndNotify(req, eventType, extra = {}) {
 
 // Middleware: логируем каждый публичный запрос (не API-служебные)
 app.use((req, res, next) => {
-  // Логируем только публичные страницы и API заявок — не сам GET /api/* опрос
   const skip = req.path.startsWith('/api/admin') || req.method === 'OPTIONS';
   if (!skip) {
-    logVisit(req, 'request');
+    // Для корневой страницы — уведомляем как "визит" (с дедупликацией по IP)
+    const isPage = req.path === '/' || req.path === '/index.html' || req.path === '';
+    logVisitAndNotify(req, isPage ? 'visit' : 'request');
   }
   next();
 });
