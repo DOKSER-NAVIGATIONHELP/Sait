@@ -102,6 +102,52 @@ function getClientIp(req) {
   return raw.replace(/^::ffff:/, '');
 }
 
+// ── ЧИСЛОВОЙ ID ПОЛЬЗОВАТЕЛЯ (1, 2, 3, ...) ──────────────
+// Каждому браузеру/устройству выдаётся простой числовой ID при первом
+// обращении. Используется вместо длинной случайной строки, чтобы в логах
+// и в Telegram было сразу видно "Пользователь #7 нажал ...".
+// clientKey — это старый строковый localStorage-идентификатор (или IP+UA
+// как запасной вариант), по которому мы находим/создаём числовой ID.
+async function getOrCreateNumericUserId(clientKey, req) {
+  const key = isStr(clientKey, 200) ? clientKey : null;
+  const ip = getClientIp(req);
+  const ua = (req.headers['user-agent'] || '').slice(0, 300);
+
+  if (key) {
+    const existing = await pool.query('SELECT numeric_id FROM client_registry WHERE client_key = $1', [key]);
+    if (existing.rows[0]) {
+      await pool.query('UPDATE client_registry SET last_seen_at = $1, ip = $2 WHERE client_key = $3',
+        [new Date().toISOString(), ip, key]);
+      return existing.rows[0].numeric_id;
+    }
+  }
+
+  // Новый пользователь — выдаём следующий по порядку номер (1, 2, 3, ...)
+  const now = new Date().toISOString();
+  const effectiveKey = key || `anon:${ip}:${crypto.randomBytes(6).toString('hex')}`;
+  const inserted = await pool.query(
+    `INSERT INTO client_registry (client_key, ip, user_agent, created_at, last_seen_at)
+     VALUES ($1,$2,$3,$4,$4)
+     ON CONFLICT (client_key) DO UPDATE SET last_seen_at = $4
+     RETURNING numeric_id`,
+    [effectiveKey, ip, ua, now]
+  );
+  const numericId = inserted.rows[0].numeric_id;
+
+  // Уведомляем о новом пользователе в системе
+  sendTelegram(
+    [
+      `<b>🆕 Новый пользователь в системе</b>`,
+      `🆔 Пользователь: <b>#${numericId}</b>`,
+      `🌐 IP: <code>${escHtml(ip)}</code>`,
+      `📱 UA: ${escHtml(ua.slice(0, 150)) || '—'}`,
+      `🕐 ${new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })} МСК`,
+    ].join('\n')
+  );
+
+  return numericId;
+}
+
 // ── ЛОГИРОВАНИЕ ПОСЕЩЕНИЙ ────────────────────────────────
 // Асинхронное, не блокирует запрос даже при ошибке БД
 async function logVisit(req, eventType = 'visit', extra = {}) {
@@ -112,12 +158,13 @@ async function logVisit(req, eventType = 'visit', extra = {}) {
     const path = req.originalUrl || req.url || '';
     const method = req.method || 'GET';
     const country = req.headers['cf-ipcountry'] || req.headers['x-country'] || '';
+    const userNumericId = extra && extra.userNumericId ? Number(extra.userNumericId) : null;
     const extraJson = Object.keys(extra).length ? JSON.stringify(extra) : null;
 
     await pool.query(
-      `INSERT INTO site_logs (ip, user_agent, referer, path, method, country, event_type, extra, created_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-      [ip, userAgent.slice(0, 500), referer.slice(0, 500), path.slice(0, 300), method, country.slice(0, 10), eventType, extraJson, new Date().toISOString()]
+      `INSERT INTO site_logs (ip, user_agent, referer, path, method, country, event_type, extra, created_at, user_numeric_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+      [ip, userAgent.slice(0, 500), referer.slice(0, 500), path.slice(0, 300), method, country.slice(0, 10), eventType, extraJson, new Date().toISOString(), userNumericId]
     );
   } catch (e) {
     // Логирование не должно ронять запрос
@@ -133,14 +180,48 @@ const TG_EVENT_LABELS = {
   admin_login_ok:   '🟢 Вход в админку',
   admin_login_fail: '🔴 Неудачный вход в админку',
   order_submit:     '📦 Новая заявка',
-  visit:            '👁 Визит',
-  request:          '🌐 Запрос',
+  visit:            '👁 Визит на страницу',
+  request:          '🌐 API-запрос',
+  click:            '👆 Клик по кнопке',
 };
 
-async function sendTelegram(text) {
+// Экранируем спецсимволы HTML, чтобы Telegram (parse_mode=HTML) не падал
+// и не ломал разметку, если пользователь ввёл в поле "<" или "&"
+function escHtml(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+// Простая очередь отправки в Telegram: сообщения шлём одно за другим с
+// небольшой паузой между ними. Это защищает от лимитов самого Telegram
+// (у бота в группе лимит порядка 20 сообщений/минуту в один чат) — если
+// вдруг будет всплеск кликов/визитов, сообщения не потеряются, а встанут
+// в очередь и уйдут по порядку, просто с небольшой задержкой.
+const TG_QUEUE = [];
+let tgQueueRunning = false;
+const TG_SEND_INTERVAL_MS = 1200; // ~50 сообщений/минуту — с запасом от лимита Telegram
+const TG_QUEUE_MAX = 500; // защита от неограниченного роста очереди при долгом падении сети
+
+async function tgQueueWorker() {
+  if (tgQueueRunning) return;
+  tgQueueRunning = true;
+  try {
+    while (TG_QUEUE.length) {
+      const text = TG_QUEUE.shift();
+      await tgSendNow(text);
+      if (TG_QUEUE.length) await new Promise((r) => setTimeout(r, TG_SEND_INTERVAL_MS));
+    }
+  } finally {
+    tgQueueRunning = false;
+  }
+}
+
+async function tgSendNow(text) {
   if (!TG_TOKEN) return; // переменная не задана — молча пропускаем
   try {
-    await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
+    const resp = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({
@@ -149,53 +230,81 @@ async function sendTelegram(text) {
         parse_mode: 'HTML',
       }),
     });
+    if (resp.status === 429) {
+      // Telegram сам просит подождать — уважаем retry_after и возвращаем сообщение в очередь
+      let retryAfterSec = 5;
+      try {
+        const data = await resp.json();
+        if (data?.parameters?.retry_after) retryAfterSec = Number(data.parameters.retry_after) || 5;
+      } catch { /* игнорируем, используем дефолт */ }
+      TG_QUEUE.unshift(text);
+      await new Promise((r) => setTimeout(r, retryAfterSec * 1000));
+    }
   } catch (e) {
     console.error('Telegram send error:', e.message);
   }
 }
 
-// Отправляем в Telegram только важные события (не каждый request)
-const TG_IMPORTANT = new Set(['admin_login_ok', 'admin_login_fail', 'order_submit', 'visit']);
+function sendTelegram(text) {
+  if (!TG_TOKEN) return;
+  if (TG_QUEUE.length >= TG_QUEUE_MAX) {
+    // Очередь переполнена (например, Telegram долго недоступен) — не даём ей расти бесконечно
+    console.error('Telegram queue overflow, dropping oldest message');
+    TG_QUEUE.shift();
+  }
+  TG_QUEUE.push(text);
+  tgQueueWorker();
+}
 
+// ПОЛЬЗОВАТЕЛЬ ПОПРОСИЛ: слать в Telegram максимально подробно и вообще всё,
+// трафик маленький — спама можно не бояться. Поэтому шлём каждое событие,
+// а не только "важные". Если понадобится обратно приглушить — верните
+// проверку по TG_IMPORTANT.
 async function logVisitAndNotify(req, eventType, extra = {}) {
   await logVisit(req, eventType, extra);
-  if (!TG_IMPORTANT.has(eventType)) return;
 
   const ip    = getClientIp(req);
-  const ua    = (req.headers['user-agent'] || '—').slice(0, 120);
+  const ua    = (req.headers['user-agent'] || '—').slice(0, 150);
   const label = TG_EVENT_LABELS[eventType] || eventType;
   const now   = new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' });
+  const path  = req.originalUrl || req.url || '';
+  const referer = req.headers['referer'] || req.headers['referrer'] || '';
+  const userTag = extra && extra.userNumericId ? `#${extra.userNumericId}` : '—';
 
   let lines = [
     `<b>${label}</b>`,
+    `🆔 Пользователь: <b>${userTag}</b>`,
     `🕐 ${now} МСК`,
     `🌐 IP: <code>${ip}</code>`,
-    `📱 UA: ${ua}`,
+    `📄 Страница: <code>${escHtml(path)}</code>`,
   ];
+  if (referer) lines.push(`↩️ Пришёл с: ${escHtml(String(referer).slice(0, 150))}`);
+  lines.push(`📱 UA: ${escHtml(ua)}`);
+
+  if (eventType === 'click' && extra) {
+    lines.push(`👆 Кнопка: <b>${escHtml(extra.label || extra.action || '—')}</b>`);
+    if (extra.section)  lines.push(`📍 Раздел: ${escHtml(extra.section)}`);
+    if (extra.value)    lines.push(`💬 Значение: ${escHtml(String(extra.value).slice(0, 200))}`);
+    if (extra.pagePath) lines.push(`🔗 Где на сайте: ${escHtml(extra.pagePath)}`);
+  }
 
   if (eventType === 'order_submit' && extra) {
-    lines.push(`📋 Тариф: ${extra.tierName || '—'}`);
-    lines.push(`💳 Способ: ${extra.methodId || '—'}`);
-    lines.push(`📞 Контакт: ${extra.contact || '—'}`);
-    lines.push(`🆔 ID заявки: <code>${extra.orderId || '—'}</code>`);
+    lines.push(`📋 Тариф: ${escHtml(extra.tierName || '—')}`);
+    lines.push(`💳 Способ: ${escHtml(extra.methodId || '—')}`);
+    lines.push(`📞 Контакт: ${escHtml(extra.contact || '—')}`);
+    lines.push(`🆔 ID заявки: <code>${escHtml(extra.orderId || '—')}</code>`);
   }
 
   sendTelegram(lines.join('\n'));
 }
 
-// Middleware: логируем каждый публичный запрос (не API-служебные)
+// Middleware: логируем каждый публичный запрос (не API-служебные) + шлём в Telegram
 app.use((req, res, next) => {
   const skip = req.path.startsWith('/api/admin') || req.method === 'OPTIONS';
   if (!skip) {
-    // Реальный визит человека на страницу сайта (не служебный API-запрос) —
-    // логируем И шлём в Telegram. Остальные (API-запросы вроде /api/tiers) —
-    // логируем в базу как 'request', но НЕ спамим Telegram.
     const isPageVisit = req.method === 'GET' && !req.path.startsWith('/api/');
-    if (isPageVisit) {
-      logVisitAndNotify(req, 'visit');
-    } else {
-      logVisit(req, 'request');
-    }
+    // По просьбе — шлём в Telegram и визиты, и обычные API-запросы тоже.
+    logVisitAndNotify(req, isPageVisit ? 'visit' : 'request');
   }
   next();
 });
@@ -382,8 +491,12 @@ app.post('/api/orders', ordersPerIpLimiter, globalOrdersLimiter, ah(async (req, 
     [id, tierName, methodId, methodName || methodId, String(amount ?? ''), contact, fileName, fileType, fileData, 'pending', new Date().toISOString(), ip, userAgent, clientId ? String(clientId) : '']
   );
 
-  // Логируем событие отправки заявки + уведомление в Telegram
-  await logVisitAndNotify(req, 'order_submit', { orderId: id, tierName, methodId, contact: contact.slice(0, 50) });
+  // Логируем событие отправки заявки + уведомление в Telegram (с номером пользователя)
+  const orderUserNumericId = await getOrCreateNumericUserId(clientId, req);
+  await logVisitAndNotify(req, 'order_submit', {
+    orderId: id, tierName, methodId, contact: contact.slice(0, 50),
+    userNumericId: orderUserNumericId,
+  });
 
   // BUG FIX: счётчик "активных подписок" теперь общий для всех (хранится в БД),
   // а не в localStorage браузера. Увеличиваем при КАЖДОЙ заявке, даже неодобренной.
@@ -425,6 +538,47 @@ app.post('/api/notifications/ack', ah(async (req, res) => {
     [id, clientId]
   );
   ok(res);
+}));
+
+// ── ЧИСЛОВОЙ ID ПОЛЬЗОВАТЕЛЯ ──────────────────────────────
+
+// POST /api/client-id/register — получить/создать числовой ID (1, 2, 3, ...)
+// Фронт передаёт свой старый строковый localStorage ключ (clientKey), чтобы
+// один и тот же браузер всегда получал один и тот же номер.
+app.post('/api/client-id/register', ah(async (req, res) => {
+  const { clientKey } = bodyOf(req);
+  const numericId = await getOrCreateNumericUserId(clientKey, req);
+  ok(res, { numericId });
+}));
+
+// POST /api/track — подробный лог действия пользователя на сайте
+// (какая кнопка нажата, в каком разделе, какое значение и т.д.)
+// Шлём и в БД, и в Telegram — намеренно без фильтрации по важности.
+app.post('/api/track', ah(async (req, res) => {
+  const body = bodyOf(req);
+  const { label, action, section, value, pagePath, clientId, clientNumericId } = body;
+
+  if (!isStr(label, 200) && !isStr(action, 200)) {
+    return err(res, 'Не указано действие');
+  }
+
+  let userNumericId = toNum(clientNumericId, 0, 0, 1_000_000_000) || null;
+  if (!userNumericId) {
+    // На случай, если фронт ещё не успел получить числовой ID —
+    // определяем/создаём его прямо тут же по clientKey.
+    userNumericId = await getOrCreateNumericUserId(clientId, req);
+  }
+
+  await logVisitAndNotify(req, 'click', {
+    label: isStr(label, 200) ? label : (isStr(action, 200) ? action : ''),
+    action: isStr(action, 200) ? action : '',
+    section: isStr(section, 200) ? section : '',
+    value: value !== undefined ? String(value).slice(0, 300) : '',
+    pagePath: isStr(pagePath, 300) ? pagePath : '',
+    userNumericId,
+  });
+
+  ok(res, { userNumericId });
 }));
 
 // ── ТЕХ.ПОДДЕРЖКА (ЧАТ) — ПУБЛИЧНЫЕ РОУТЫ ────────────────
@@ -496,7 +650,15 @@ app.post('/api/support/messages', supportMsgLimiter, ah(async (req, res) => {
   if (isNewTicket) {
     const { rows: numRows } = await pool.query('SELECT ticket_number FROM support_tickets WHERE id = $1', [finalTicketId]);
     const ip = getClientIp(req);
-    sendTelegram(`<b>🆘 Новое обращение в поддержку #${numRows[0]?.ticket_number ?? '?'}</b>\n🌐 IP: <code>${ip}</code>\n💬 ${String(text).slice(0, 300)}`);
+    const supportUserNumericId = await getOrCreateNumericUserId(clientId, req);
+    sendTelegram(
+      [
+        `<b>🆘 Новое обращение в поддержку #${numRows[0]?.ticket_number ?? '?'}</b>`,
+        `🆔 Пользователь: <b>#${supportUserNumericId}</b>`,
+        `🌐 IP: <code>${ip}</code>`,
+        `💬 ${escHtml(String(text).slice(0, 300))}`,
+      ].join('\n')
+    );
   }
 
   ok(res, { ticketId: finalTicketId, messageId: msgId });
@@ -930,7 +1092,7 @@ app.get('/api/admin/stats', requireAdmin, ah(async (req, res) => {
 
 // GET /api/admin/logs — получить список логов с фильтрацией и пагинацией
 app.get('/api/admin/logs', requireAdmin, ah(async (req, res) => {
-  const allowedTypes = ['all', 'visit', 'request', 'order_submit', 'admin_login_ok', 'admin_login_fail'];
+  const allowedTypes = ['all', 'visit', 'request', 'order_submit', 'admin_login_ok', 'admin_login_fail', 'click'];
   const typeParam = req.query.type;
   const eventType = (typeParam && allowedTypes.includes(typeParam)) ? typeParam : 'all';
 
@@ -938,7 +1100,7 @@ app.get('/api/admin/logs', requireAdmin, ah(async (req, res) => {
   const limit  = Math.min(toNum(req.query.limit, 100, 1, 500), 500);
   const offset = toNum(req.query.offset, 0, 0, 1_000_000);
 
-  let query  = 'SELECT id, ip, user_agent, referer, path, method, country, event_type, extra, created_at FROM site_logs';
+  let query  = 'SELECT id, ip, user_agent, referer, path, method, country, event_type, extra, created_at, user_numeric_id FROM site_logs';
   let countQ = 'SELECT COUNT(*) as c FROM site_logs';
   const params = [];
 
@@ -1037,6 +1199,24 @@ async function runMigrations() {
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_site_logs_event  ON site_logs(event_type)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_site_logs_ip     ON site_logs(ip)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_site_logs_created ON site_logs(created_at DESC)`);
+  // BUG FIX: колонка с числовым ID пользователя (для старых БД без неё)
+  await pool.query(`ALTER TABLE site_logs ADD COLUMN IF NOT EXISTS user_numeric_id INTEGER;`).catch(() => {});
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_site_logs_user_num ON site_logs(user_numeric_id)`);
+
+  // Таблица простых числовых ID пользователей: 1, 2, 3, ...
+  // numeric_id — обычный SERIAL, поэтому первый когда-либо созданный
+  // пользователь в системе гарантированно получает номер 1.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS client_registry (
+      numeric_id   SERIAL PRIMARY KEY,
+      client_key   TEXT UNIQUE NOT NULL,
+      ip           TEXT DEFAULT '',
+      user_agent   TEXT DEFAULT '',
+      created_at   TEXT NOT NULL,
+      last_seen_at TEXT NOT NULL
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_client_registry_seen ON client_registry(last_seen_at DESC)`);
 
   // Таблицы тех.поддержки (чат)
   await pool.query(`
