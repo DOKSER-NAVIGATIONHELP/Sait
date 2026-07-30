@@ -37,6 +37,10 @@ pool.on('error', (e) => {
   console.error('Postgres pool error:', e.message);
 });
 
+// ── СЧЁТЧИК "АКТИВНЫХ ПОДПИСОК" ──────────────────────────
+// Общий для всех посетителей (хранится в БД, а не в localStorage браузера)
+const SUBS_COUNTER_BASE = 240;
+
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
   console.warn('⚠️  JWT_SECRET не задан в переменных окружения!');
@@ -352,7 +356,22 @@ app.post('/api/orders', ordersPerIpLimiter, globalOrdersLimiter, ah(async (req, 
   // Логируем событие отправки заявки + уведомление в Telegram
   await logVisitAndNotify(req, 'order_submit', { orderId: id, tierName, methodId, contact: contact.slice(0, 50) });
 
+  // BUG FIX: счётчик "активных подписок" теперь общий для всех (хранится в БД),
+  // а не в localStorage браузера. Увеличиваем при КАЖДОЙ заявке, даже неодобренной.
+  await pool.query(
+    `INSERT INTO settings (key, value) VALUES ('subs_counter', $1)
+     ON CONFLICT (key) DO UPDATE SET value = (CAST(settings.value AS INTEGER) + 1)::TEXT`,
+    [String(SUBS_COUNTER_BASE + 1)]
+  );
+
   ok(res, { id });
+}));
+
+// GET /api/subs-count — общий счётчик "активных подписок", виден всем одинаково
+app.get('/api/subs-count', ah(async (req, res) => {
+  const { rows } = await pool.query("SELECT value FROM settings WHERE key = 'subs_counter'");
+  const n = rows[0] ? parseInt(rows[0].value, 10) : SUBS_COUNTER_BASE;
+  ok(res, { count: Number.isFinite(n) && n >= SUBS_COUNTER_BASE ? n : SUBS_COUNTER_BASE });
 }));
 
 // ── ADMIN AUTH ───────────────────────────────────────────
@@ -706,6 +725,12 @@ async function runMigrations() {
   await pool.query(`
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS user_agent  TEXT DEFAULT '';
   `).catch(() => {});
+
+  // Инициализируем счётчик подписок базовым значением, если ещё не задан
+  await pool.query(
+    `INSERT INTO settings (key, value) VALUES ('subs_counter', $1) ON CONFLICT (key) DO NOTHING`,
+    [String(SUBS_COUNTER_BASE)]
+  );
 
   console.log('✅ Миграции выполнены.');
 }
