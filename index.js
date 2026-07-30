@@ -1057,7 +1057,7 @@ app.get('/api/admin/bonus', requireAdmin, ah(async (req, res) => {
 
 app.put('/api/admin/bonus', requireAdmin, ah(async (req, res) => {
   const body = bodyOf(req);
-  const allowed = ['title', 'btnText', 'modalTitle', 'modalText'];
+  const allowed = ['title', 'btnText', 'modalTitle', 'modalText', 'link'];
   for (const key of allowed) {
     if (body[key] !== undefined && isStr(String(body[key]), 2000)) {
       await pool.query(
