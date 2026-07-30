@@ -113,7 +113,7 @@ async function logVisit(req, eventType = 'visit', extra = {}) {
 
 // ── TELEGRAM УВЕДОМЛЕНИЯ ─────────────────────────────────
 const TG_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const TG_CHAT  = '-5119387394';
+const TG_CHAT  = '-1005119387394';
 
 const TG_EVENT_LABELS = {
   admin_login_ok:   '🟢 Вход в админку',
