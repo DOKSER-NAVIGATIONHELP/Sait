@@ -1,0 +1,16 @@
+{
+  "name": "tiers-club-api",
+  "version": "1.0.0",
+  "description": "TIERS CLUB API — портировано с Cloudflare Worker на Render",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "pg": "^8.12.0"
+  }
+}
