@@ -387,6 +387,115 @@ h1{
 }
 .free p{font-size:13px; color:var(--text-dim); line-height:1.55; margin:0 0 16px;}
 
+/* BONUS TIER CARD */
+.bonus-card{
+  position:relative;
+  margin:20px 24px 0;
+  border:1px solid var(--red-dim);
+  border-radius:14px;
+  padding:24px;
+  overflow:hidden;
+  background:linear-gradient(180deg, rgba(139,40,32,.10), rgba(139,40,32,.02));
+}
+.bonus-glow{
+  position:absolute;
+  top:-60px; right:-40px;
+  width:160px; height:160px;
+  background:radial-gradient(circle, var(--red-bright) 0%, transparent 70%);
+  opacity:.18;
+  pointer-events:none;
+}
+.bonus-tag{
+  display:inline-block;
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:.05em;
+  text-transform:uppercase;
+  color:var(--red-bright);
+  background:var(--red-dim);
+  border-radius:6px;
+  padding:4px 9px;
+  margin-bottom:12px;
+}
+.bonus-card h3{
+  font-family:var(--font-display);
+  font-weight:700;
+  font-size:17px;
+  margin:0 0 6px;
+  position:relative;
+  z-index:1;
+}
+.bonus-card p{
+  font-size:13px;
+  color:var(--text-dim);
+  line-height:1.55;
+  margin:0 0 16px;
+  position:relative;
+  z-index:1;
+}
+.bonus-btn{
+  width:100%;
+  border:none;
+  cursor:pointer;
+  font-family:inherit;
+  position:relative;
+  z-index:1;
+}
+
+/* BONUS MODAL */
+.bonus-modal-overlay{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.6);
+  backdrop-filter:blur(3px);
+  z-index:200;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+}
+.bonus-modal-overlay.open{display:flex;}
+.bonus-modal{
+  background:var(--panel);
+  border:1px solid var(--red-dim);
+  border-radius:14px;
+  max-width:380px;
+  width:100%;
+  padding:24px;
+  position:relative;
+  box-shadow:0 20px 60px rgba(0,0,0,.5);
+}
+.bonus-modal-close{
+  position:absolute;
+  top:14px; right:14px;
+  width:28px; height:28px;
+  border-radius:50%;
+  border:1px solid var(--line);
+  background:transparent;
+  color:var(--text-dim);
+  cursor:pointer;
+  font-size:15px;
+  line-height:1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.bonus-modal-close:hover{border-color:var(--red); color:var(--red-bright);}
+.bonus-modal-title{
+  font-family:var(--font-display);
+  font-weight:700;
+  font-size:16px;
+  margin:0 0 12px;
+  padding-right:24px;
+}
+.bonus-modal-text{
+  font-size:13.5px;
+  color:var(--text-dim);
+  line-height:1.6;
+  margin:0;
+  white-space:pre-line;
+}
+
 footer{
   padding:44px 24px 50px;
   font-size:11px;
@@ -1362,8 +1471,15 @@ footer{
     <a href="#" class="btn outline">Посмотреть бесплатно</a>
   </div>
 
+  <div class="bonus-card reveal" id="bonus-card">
+    <div class="bonus-glow"></div>
+    <span class="bonus-tag">Специальное предложение</span>
+    <h3 id="bonus-title">Получить 5 гигабайт бесплатно!</h3>
+    <p id="bonus-sub">Выполните простое условие и получите бонус</p>
+    <button class="btn primary bonus-btn" id="bonus-btn">Получить бонус</button>
+  </div>
+
   <footer>
-    Принимаем оплату: банковские карты · Telegram Stars (<a href="https://t.me/Manager_zhaoa" target="_blank" style="color:inherit">@Manager_zhaoa</a>) · NFT (<a href="https://t.me/Manager_zhaoa" target="_blank" style="color:inherit">@Manager_zhaoa</a>)
   </footer>
 
   <!-- Admin trigger — в самом конце сайта, справа -->
@@ -1371,6 +1487,15 @@ footer{
     <button class="admin-trigger" id="admin-trigger" title="Управление тарифами">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
     </button>
+  </div>
+</div>
+
+<!-- Bonus modal -->
+<div class="bonus-modal-overlay" id="bonus-modal">
+  <div class="bonus-modal">
+    <button class="bonus-modal-close" id="bonus-modal-close">✕</button>
+    <h3 class="bonus-modal-title" id="bonus-modal-title">Как получить бонус</h3>
+    <p class="bonus-modal-text" id="bonus-modal-text">Напишите 10 комментариев в нашем тик токе, чтоб получить, и отправьте скрины в поддержку!</p>
   </div>
 </div>
 
@@ -1521,6 +1646,32 @@ footer{
 
     <!-- TAB: SETTINGS -->
     <div id="tab-settings" style="display:none">
+      <div class="tier-editor">
+        <div class="field">
+          <label>Блок бонуса — заголовок карточки</label>
+          <input type="text" id="bonus-title-input" placeholder="Получить 5 гигабайт бесплатно!">
+        </div>
+        <div class="field">
+          <label>Блок бонуса — подзаголовок карточки</label>
+          <input type="text" id="bonus-sub-input" placeholder="Выполните простое условие и получите бонус">
+        </div>
+        <div class="field">
+          <label>Текст кнопки</label>
+          <input type="text" id="bonus-btn-input" placeholder="Получить бонус">
+        </div>
+        <div class="field">
+          <label>Заголовок всплывающего окна</label>
+          <input type="text" id="bonus-modal-title-input" placeholder="Как получить бонус">
+        </div>
+        <div class="field">
+          <label>Текст всплывающего окна (условие)</label>
+          <textarea id="bonus-modal-text-input" rows="4" placeholder="Напишите 10 комментариев в нашем тик токе, чтоб получить, и отправьте скрины в поддержку!"></textarea>
+        </div>
+        <div class="row-btns">
+          <button class="btn-sm red" id="save-bonus">Сохранить блок бонуса</button>
+        </div>
+      </div>
+
       <div class="tier-editor">
         <div class="field">
           <label>Изменить пароль администратора</label>
@@ -2976,6 +3127,107 @@ fetchTiersFromApi().then(function(apiTiers){
   console.warn('Не удалось загрузить тарифы с API, используются локальные значения:', e);
 });
 refreshOrdersBadge();
+
+// ============================================================
+// BONUS BLOCK — заголовок/текст карточки и текст всплывающего окна
+// ============================================================
+var BONUS_STORAGE_KEY = 'tiers_bonus_v1';
+
+var DEFAULT_BONUS = {
+  title: 'Получить 5 гигабайт бесплатно!',
+  sub: 'Выполните простое условие и получите бонус',
+  btnText: 'Получить бонус',
+  modalTitle: 'Как получить бонус',
+  modalText: 'Напишите 10 комментариев в нашем тик токе, чтоб получить, и отправьте скрины в поддержку!'
+};
+
+function loadBonusLocal(){
+  try{
+    var raw = localStorage.getItem(BONUS_STORAGE_KEY);
+    if(raw) return Object.assign({}, DEFAULT_BONUS, JSON.parse(raw));
+  }catch(e){}
+  return JSON.parse(JSON.stringify(DEFAULT_BONUS));
+}
+function saveBonusLocal(b){
+  localStorage.setItem(BONUS_STORAGE_KEY, JSON.stringify(b));
+}
+function fetchBonusFromApi(){
+  return apiFetch('/api/bonus').then(function(data){
+    return Object.assign({}, DEFAULT_BONUS, data.bonus || {});
+  });
+}
+function saveBonusToApi(b){
+  return apiFetch('/api/admin/bonus', { method: 'PUT', body: JSON.stringify(b) });
+}
+
+var bonus = loadBonusLocal();
+
+function renderBonus(){
+  document.getElementById('bonus-title').textContent = bonus.title || DEFAULT_BONUS.title;
+  document.getElementById('bonus-sub').textContent = bonus.sub || DEFAULT_BONUS.sub;
+  document.getElementById('bonus-btn').textContent = bonus.btnText || DEFAULT_BONUS.btnText;
+  document.getElementById('bonus-modal-title').textContent = bonus.modalTitle || DEFAULT_BONUS.modalTitle;
+  document.getElementById('bonus-modal-text').textContent = bonus.modalText || DEFAULT_BONUS.modalText;
+}
+function fillBonusAdminForm(){
+  document.getElementById('bonus-title-input').value = bonus.title || '';
+  document.getElementById('bonus-sub-input').value = bonus.sub || '';
+  document.getElementById('bonus-btn-input').value = bonus.btnText || '';
+  document.getElementById('bonus-modal-title-input').value = bonus.modalTitle || '';
+  document.getElementById('bonus-modal-text-input').value = bonus.modalText || '';
+}
+
+renderBonus();
+fetchBonusFromApi().then(function(b){
+  bonus = b;
+  renderBonus();
+  fillBonusAdminForm();
+}).catch(function(e){
+  console.warn('Не удалось загрузить блок бонуса с API, используются локальные значения:', e);
+  fillBonusAdminForm();
+});
+
+// Открытие/закрытие всплывающего окна (одноразовое, закрывается вручную)
+var bonusModal = document.getElementById('bonus-modal');
+document.getElementById('bonus-btn').addEventListener('click', function(){
+  bonusModal.classList.add('open');
+  document.body.classList.add('modal-open');
+});
+function closeBonusModal(){
+  bonusModal.classList.remove('open');
+  document.body.classList.remove('modal-open');
+}
+document.getElementById('bonus-modal-close').addEventListener('click', closeBonusModal);
+bonusModal.addEventListener('click', function(e){
+  if(e.target === bonusModal) closeBonusModal();
+});
+
+// Сохранение из админки
+var saveBonusBtn = document.getElementById('save-bonus');
+if(saveBonusBtn){
+  saveBonusBtn.addEventListener('click', function(){
+    var newBonus = {
+      title: document.getElementById('bonus-title-input').value.trim() || DEFAULT_BONUS.title,
+      sub: document.getElementById('bonus-sub-input').value.trim() || DEFAULT_BONUS.sub,
+      btnText: document.getElementById('bonus-btn-input').value.trim() || DEFAULT_BONUS.btnText,
+      modalTitle: document.getElementById('bonus-modal-title-input').value.trim() || DEFAULT_BONUS.modalTitle,
+      modalText: document.getElementById('bonus-modal-text-input').value.trim() || DEFAULT_BONUS.modalText
+    };
+    saveBonusBtn.disabled = true;
+    saveBonusBtn.textContent = 'Сохранение...';
+    saveBonusToApi(newBonus).then(function(){
+      bonus = newBonus;
+      saveBonusLocal(bonus);
+      renderBonus();
+      showToast('Блок бонуса сохранён');
+    }).catch(function(e){
+      showToast('Ошибка сохранения: ' + (e.message || e));
+    }).finally(function(){
+      saveBonusBtn.disabled = false;
+      saveBonusBtn.textContent = 'Сохранить блок бонуса';
+    });
+  });
+}
 </script>
 </body>
 </html>
