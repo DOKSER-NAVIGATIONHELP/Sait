@@ -964,6 +964,7 @@ footer{
 }
 .order-actions .approve-btn:hover{border-color:#4CC98A; color:#4CC98A;}
 .order-actions .reject-btn:hover{border-color:#A83328; color:#A83328;}
+.order-actions .js-notify-client:hover{border-color:var(--red-bright); color:var(--red-bright);}
 .order-empty{
   text-align:center;
   padding:40px 20px;
@@ -976,7 +977,7 @@ footer{
   display:none;
   position:fixed; inset:0;
   background:rgba(0,0,0,.85);
-  z-index:200;
+  z-index:600;
   align-items:center;
   justify-content:center;
   padding:24px;
@@ -1702,6 +1703,71 @@ footer{
   .admin-support-list{ width:100%; max-height:220px; border-right:none; border-bottom:1px solid var(--line); }
   .admin-support-chat{ min-height:420px; }
 }
+
+/* ============================================================
+   BROADCAST NOTIFICATION (personal popup from admin, always on top)
+   ============================================================ */
+.broadcast-overlay{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.75);
+  z-index:700;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+}
+.broadcast-overlay.open{display:flex;}
+.broadcast-box{
+  background:var(--panel);
+  border:1px solid var(--red-dim);
+  border-radius:16px;
+  width:100%;
+  max-width:380px;
+  padding:26px 22px 22px;
+  text-align:center;
+  box-shadow:0 20px 60px rgba(0,0,0,.6);
+  animation:fadeSlideIn .28s cubic-bezier(.22,1,.36,1);
+}
+.broadcast-icon{
+  width:52px; height:52px;
+  border-radius:50%;
+  background:rgba(139,40,32,.18);
+  border:1px solid var(--red-dim);
+  color:var(--red-bright);
+  display:flex; align-items:center; justify-content:center;
+  margin:0 auto 16px;
+}
+.broadcast-title{
+  font-family:var(--font-display);
+  font-weight:700;
+  font-size:17px;
+  margin-bottom:10px;
+}
+.broadcast-text{
+  font-size:13.5px;
+  color:var(--text);
+  line-height:1.6;
+  white-space:pre-wrap;
+  margin-bottom:20px;
+}
+.broadcast-close-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:100%;
+  padding:12px;
+  border-radius:8px;
+  font-family:var(--font-display);
+  font-weight:700;
+  font-size:13px;
+  border:1px solid var(--line);
+  background:transparent;
+  color:var(--text);
+  cursor:pointer;
+  transition:background .2s ease, color .2s ease, border-color .2s ease;
+}
+.broadcast-close-btn:hover{ background:var(--red); color:#0A0909; border-color:var(--red); }
 </style>
 </head>
 <body>
@@ -1846,6 +1912,40 @@ footer{
   </div>
 </div>
 
+<!-- Personal broadcast notification from admin — always on top, over everything -->
+<div class="broadcast-overlay" id="broadcast-overlay">
+  <div class="broadcast-box">
+    <div class="broadcast-icon">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    </div>
+    <div class="broadcast-title" id="broadcast-title">Произошла ошибка</div>
+    <div class="broadcast-text" id="broadcast-text"></div>
+    <button class="broadcast-close-btn" id="broadcast-close-btn">Понятно</button>
+  </div>
+</div>
+
+<!-- Notify client modal (admin composes text for the "Написать" button on an order) -->
+<div class="modal-overlay" id="notify-client-modal">
+  <div class="modal">
+    <div class="modal-title">Написать клиенту</div>
+    <button class="modal-close" id="notify-client-close">✕</button>
+    <p style="font-size:12.5px; color:var(--text-dim); margin:-8px 0 14px; line-height:1.5;">
+      Клиенту всплывёт окно поверх сайта с заголовком «Произошла ошибка» и текстом ниже.
+    </p>
+    <div class="tier-editor">
+      <div class="field">
+        <label>Текст сообщения</label>
+        <textarea id="notify-client-text" rows="4" placeholder="Например: уточните, пожалуйста, номер карты, с которой был перевод — не можем найти платёж."></textarea>
+      </div>
+      <div class="err" id="notify-client-err" style="display:none"></div>
+      <div class="row-btns" style="margin-top:6px">
+        <button class="btn-sm ghost" id="notify-client-cancel">Отмена</button>
+        <button class="btn-sm red" id="notify-client-send">Отправить</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Admin panel modal -->
 <div class="modal-overlay" id="admin-modal">
   <div class="modal" style="margin:16px auto; max-height:none; overflow:visible;">
@@ -1986,6 +2086,17 @@ footer{
           <button class="btn-sm red" id="save-password">Сменить пароль</button>
         </div>
       </div>
+
+      <div class="tier-editor" style="margin-top:20px;">
+        <div class="section-label" style="margin-bottom:10px;">Доверенные устройства для входа без пароля</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-bottom:12px;line-height:1.5;">
+          После 3 успешных входов подряд с одного браузера пароль больше не запрашивается. Доверие действует 30 дней с последнего входа. Если устройство больше не должно иметь доступ — отзовите его здесь.
+        </div>
+        <div id="trusted-devices-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;"></div>
+        <div class="row-btns">
+          <button class="btn-sm ghost" id="revoke-all-devices">Отозвать все устройства</button>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -2003,6 +2114,18 @@ footer{
 var API_BASE = 'https://sait-76t5.onrender.com';
 
 var adminToken = null; // хранится только в памяти вкладки
+
+// Устройство для входа в админку без пароля после 3 успешных входов подряд
+var ADMIN_DEVICE_KEY = 'admin_device_id_v1';
+function getOrCreateAdminDeviceId(){
+  var id = localStorage.getItem(ADMIN_DEVICE_KEY);
+  if(!id){
+    id = 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
+    localStorage.setItem(ADMIN_DEVICE_KEY, id);
+  }
+  return id;
+}
+var adminDeviceId = getOrCreateAdminDeviceId();
 
 function apiFetch(path, opts){
   opts = opts || {};
@@ -2272,7 +2395,7 @@ function renderPublic(){
 }
 
 function esc(s){
-  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 function num(n){
   return Number(n).toLocaleString('ru-RU');
@@ -2293,17 +2416,35 @@ function showToast(msg){
 // ============================================================
 function lockBody(){ document.body.classList.add('modal-open'); }
 function unlockBody(){
-  // Only unlock if no other modals are open
-  var anyOpen = document.querySelector('.modal-overlay.open, .pay-modal-overlay.open');
+  // Only unlock if no other modals/overlays are open.
+  // BUG FIX: раньше здесь проверялись только .modal-overlay и .pay-modal-overlay —
+  // лайтбокс чека, чат поддержки и broadcast-уведомление не учитывались, из-за чего
+  // при закрытии одного окна снималась блокировка скролла, даже если другое окно
+  // всё ещё было открыто (фон "уезжал" под ним — ощущение, что открыто два окна разом).
+  var anyOpen = document.querySelector(
+    '.modal-overlay.open, .pay-modal-overlay.open, .lightbox-overlay.open, .support-chat-overlay.open, .broadcast-overlay.open'
+  );
   if(!anyOpen) document.body.classList.remove('modal-open');
 }
 
 document.getElementById('admin-trigger').onclick = function(){
-  document.getElementById('login-modal').classList.add('open');
-  lockBody();
-  document.getElementById('login-password').value = '';
-  document.getElementById('login-err').style.display = 'none';
-  setTimeout(function(){ document.getElementById('login-password').focus(); }, 100);
+  var trigger = this;
+  trigger.style.pointerEvents = 'none';
+  apiFetch('/api/admin/login-device', { method: 'POST', body: JSON.stringify({ deviceId: adminDeviceId }) })
+    .then(function(data){
+      // Устройство доверено — входим без пароля
+      adminToken = data.token;
+      openAdmin();
+    })
+    .catch(function(){
+      // Не доверено (или ошибка) — показываем обычное окно с паролем
+      document.getElementById('login-modal').classList.add('open');
+      lockBody();
+      document.getElementById('login-password').value = '';
+      document.getElementById('login-err').style.display = 'none';
+      setTimeout(function(){ document.getElementById('login-password').focus(); }, 100);
+    })
+    .finally(function(){ trigger.style.pointerEvents = ''; });
 };
 document.getElementById('login-close').onclick = function(){
   document.getElementById('login-modal').classList.remove('open');
@@ -2322,7 +2463,7 @@ function doLogin(){
   var errBox = document.getElementById('login-err');
   errBox.style.display = 'none';
   submitBtn.disabled = true;
-  apiFetch('/api/admin/login', { method: 'POST', body: JSON.stringify({ password: val }) })
+  apiFetch('/api/admin/login', { method: 'POST', body: JSON.stringify({ password: val, deviceId: adminDeviceId }) })
     .then(function(data){
       adminToken = data.token;
       document.getElementById('login-modal').classList.remove('open');
@@ -2391,6 +2532,7 @@ function switchTab(tab){
   if(tab === 'bonus') fillBonusForm();
   if(tab === 'support') refreshSupportTickets();
   if(tab === 'logs') refreshLogsFromApi();
+  if(tab === 'settings') refreshTrustedDevices();
 }
 
 // ============================================================
@@ -2448,8 +2590,8 @@ function renderAdminList(){
       '<div class="admin-tier-item-actions">'+
         '<button class="icon-btn move" data-move="-1" data-idx="'+idx+'" title="Вверх">↑</button>'+
         '<button class="icon-btn move" data-move="1"  data-idx="'+idx+'" title="Вниз">↓</button>'+
-        '<button class="icon-btn" data-edit="'+t.id+'" title="Редактировать">✎</button>'+
-        '<button class="icon-btn danger" data-del="'+t.id+'" title="Удалить">✕</button>'+
+        '<button class="icon-btn" data-edit="'+esc(t.id)+'" title="Редактировать">✎</button>'+
+        '<button class="icon-btn danger" data-del="'+esc(t.id)+'" title="Удалить">✕</button>'+
       '</div>';
     list.appendChild(item);
   });
@@ -2646,6 +2788,64 @@ document.getElementById('new-tier-save').onclick = function(){
 // ============================================================
 // SETTINGS — CHANGE PASSWORD
 // ============================================================
+// ============================================================
+// TRUSTED DEVICES (вход в админку без пароля)
+// ============================================================
+function refreshTrustedDevices(){
+  var list = document.getElementById('trusted-devices-list');
+  list.innerHTML = '<div style="font-size:12px;color:var(--text-dim);">Загрузка…</div>';
+  apiFetch('/api/admin/trusted-devices').then(function(data){
+    renderTrustedDevices(data.devices || []);
+  }).catch(function(e){
+    list.innerHTML = '<div style="font-size:12px;color:var(--text-dim);">Ошибка загрузки: '+ esc(e.message) +'</div>';
+  });
+}
+
+function renderTrustedDevices(devices){
+  var list = document.getElementById('trusted-devices-list');
+  if(!devices.length){
+    list.innerHTML = '<div style="font-size:12px;color:var(--text-dim);">Пока нет ни одного устройства.</div>';
+    return;
+  }
+  list.innerHTML = devices.map(function(d){
+    var isThisDevice = d.device_id === adminDeviceId;
+    var isTrusted = d.trusted === 1;
+    var expired = isTrusted && d.expires_at && new Date(d.expires_at).getTime() < Date.now();
+    var statusText = !isTrusted ? ('Вход без пароля: '+ (d.success_count||0) +'/3 подряд') :
+                      expired ? 'Доверие истекло' :
+                      'Доверено до '+ new Date(d.expires_at).toLocaleDateString('ru-RU');
+    var lastLogin = d.last_login_at ? new Date(d.last_login_at).toLocaleString('ru-RU') : '—';
+    return '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;background:var(--panel);border:1px solid var(--line);border-radius:8px;">'+
+      '<div style="min-width:0;">'+
+        '<div style="font-size:12.5px;font-weight:600;">'+ esc((d.label||'Неизвестное устройство').slice(0,60)) + (isThisDevice ? ' <span style="color:var(--red-bright)">(это устройство)</span>' : '') +'</div>'+
+        '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">'+ esc(statusText) +' · IP: '+ esc(d.ip||'—') +'</div>'+
+        '<div style="font-size:10.5px;color:var(--text-dim);margin-top:1px;">Последний вход: '+ esc(lastLogin) +'</div>'+
+      '</div>'+
+      '<button class="icon-btn danger js-revoke-device" data-device-id="'+ esc(d.device_id) +'" title="Отозвать">✕</button>'+
+    '</div>';
+  }).join('');
+
+  list.querySelectorAll('.js-revoke-device').forEach(function(btn){
+    btn.onclick = function(){
+      var deviceId = btn.getAttribute('data-device-id');
+      btn.disabled = true;
+      apiFetch('/api/admin/trusted-devices/' + encodeURIComponent(deviceId), { method: 'DELETE' })
+        .then(function(){ showToast('Устройство отозвано'); refreshTrustedDevices(); })
+        .catch(function(e){ showToast('Ошибка: ' + e.message); btn.disabled = false; });
+    };
+  });
+}
+
+document.getElementById('revoke-all-devices').onclick = function(){
+  if(!confirm('Отозвать доступ без пароля у всех устройств, включая текущее? Понадобится снова 3 раза войти по паролю.')) return;
+  var btn = this;
+  btn.disabled = true;
+  apiFetch('/api/admin/trusted-devices', { method: 'DELETE' })
+    .then(function(){ showToast('Все устройства отозваны'); refreshTrustedDevices(); })
+    .catch(function(e){ showToast('Ошибка: ' + e.message); })
+    .finally(function(){ btn.disabled = false; });
+};
+
 document.getElementById('save-password').onclick = function(){
   var cur = document.getElementById('current-password').value;
   var p1 = document.getElementById('new-password').value;
@@ -2923,6 +3123,17 @@ function initReceiptBlock(methodId){
       renderReceiptPreview(methodId);
       updateSubmitState(methodId);
     };
+    // BUG FIX: раньше при ошибке чтения (битый файл / браузер оборвал чтение)
+    // ничего не происходило — превью не появлялось, кнопка оставалась
+    // недоступной, а пользователь не видел никакой ошибки и не понимал, в чём дело.
+    reader.onerror = function(){
+      receiptState[methodId].file = null;
+      errBox.textContent = 'Не удалось загрузить фото. Попробуйте другой файл или сделайте новый скриншот.';
+      errBox.style.display = 'block';
+      fileInput.value = '';
+      renderReceiptPreview(methodId);
+      updateSubmitState(methodId);
+    };
     reader.readAsDataURL(file);
   };
 
@@ -2953,7 +3164,7 @@ function renderReceiptPreview(methodId){
   var isImage = f.type.indexOf('image') === 0;
   preview.innerHTML =
     '<div class="receipt-preview">'+
-      (isImage ? '<img src="'+f.dataUrl+'" alt="">' : '<div class="file-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>')+
+      (isImage ? '<img src="'+f.dataUrl+'" alt="" id="receipt-preview-img-'+methodId+'">' : '<div class="file-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>')+
       '<div class="receipt-preview-name">'+ esc(f.name) +'</div>'+
       '<button class="receipt-preview-remove" id="receipt-remove-'+methodId+'" type="button">✕</button>'+
     '</div>';
@@ -2963,6 +3174,23 @@ function renderReceiptPreview(methodId){
     renderReceiptPreview(methodId);
     updateSubmitState(methodId);
   };
+  // BUG FIX: если dataURL всё же оказался битым и картинка не отрисовалась,
+  // раньше пользователь просто видел сломанную иконку без объяснений и мог
+  // отправить нерабочий файл. Теперь показываем явную ошибку и сбрасываем файл.
+  if(isImage){
+    var imgEl = document.getElementById('receipt-preview-img-'+methodId);
+    if(imgEl){
+      imgEl.onerror = function(){
+        receiptState[methodId].file = null;
+        var errBox = document.getElementById('receipt-err-'+methodId);
+        errBox.textContent = 'Файл повреждён и не открывается как изображение. Загрузите другой файл.';
+        errBox.style.display = 'block';
+        document.getElementById('receipt-file-'+methodId).value = '';
+        renderReceiptPreview(methodId);
+        updateSubmitState(methodId);
+      };
+    }
+  }
 }
 
 function updateSubmitState(methodId){
@@ -2990,7 +3218,8 @@ function submitReceipt(methodId){
     contact: contact,
     fileName: f.name,
     fileType: f.type,
-    fileData: f.dataUrl
+    fileData: f.dataUrl,
+    clientId: getOrCreateClientId()
   };
 
   var submitBtn = document.getElementById('receipt-submit-'+methodId);
@@ -3045,7 +3274,8 @@ function refreshOrdersFromApi(){
         status: o.status,
         createdAt: o.created_at,
         clientIp: o.client_ip || '',
-        userAgent: o.user_agent || ''
+        userAgent: o.user_agent || '',
+        clientId: o.client_id || ''
       };
     });
     renderOrdersList();
@@ -3093,22 +3323,28 @@ function renderOrdersList(){
         (o.clientIp ? '<div style="font-size:11px;color:var(--text-dim);margin-top:3px;">IP: <b style="color:var(--red-bright)">'+ esc(o.clientIp) +'</b></div>' : '')+
         (o.userAgent ? '<div style="font-size:10px;color:var(--text-dim);margin-top:1px;word-break:break-all;">'+ esc(o.userAgent.slice(0,120)) +'</div>' : '')+
       '</div>'+
-      '<div class="order-receipt-link js-view-receipt" data-order-id="'+o.id+'">'+
+      '<div class="order-receipt-link js-view-receipt" data-order-id="'+esc(o.id)+'">'+
         '<div class="file-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>'+
         '<span>'+ esc(o.fileName) +' (открыть)</span>'+
       '</div>'+
       (o.status === 'pending' ?
         '<div class="order-actions">'+
-          '<button class="approve-btn" data-order-id="'+o.id+'" data-action="approved">✓ Подтвердить</button>'+
-          '<button class="reject-btn" data-order-id="'+o.id+'" data-action="rejected">✕ Отклонить</button>'+
+          '<button class="approve-btn" data-order-id="'+esc(o.id)+'" data-action="approved">✓ Подтвердить</button>'+
+          '<button class="reject-btn" data-order-id="'+esc(o.id)+'" data-action="rejected">✕ Отклонить</button>'+
+          '<button class="js-notify-client" data-order-id="'+esc(o.id)+'">✉ Написать</button>'+
         '</div>'
-        : '<div class="order-actions"><button data-order-id="'+o.id+'" data-action="pending">↺ Вернуть на проверку</button></div>'
+        : '<div class="order-actions"><button data-order-id="'+esc(o.id)+'" data-action="pending">↺ Вернуть на проверку</button><button class="js-notify-client" data-order-id="'+esc(o.id)+'">✉ Написать</button></div>'
       )+
     '</div>';
   }).join('');
 }
 
 document.getElementById('orders-list').addEventListener('click', function(e){
+  var notifyBtn = e.target.closest('.js-notify-client');
+  if(notifyBtn){
+    openNotifyClientModal(notifyBtn.getAttribute('data-order-id'));
+    return;
+  }
   var viewLink = e.target.closest('.js-view-receipt');
   if(viewLink){
     var orderId = viewLink.getAttribute('data-order-id');
@@ -3123,6 +3359,7 @@ document.getElementById('orders-list').addEventListener('click', function(e){
         if(order && (order.fileType||'').indexOf('image') === 0){
           document.getElementById('lightbox-img').src = objUrl;
           document.getElementById('lightbox-overlay').classList.add('open');
+          lockBody();
         } else {
           window.open(objUrl, '_blank');
         }
@@ -3142,11 +3379,73 @@ document.getElementById('orders-list').addEventListener('click', function(e){
   }
 });
 
-document.getElementById('lightbox-close').onclick = function(){
-  document.getElementById('lightbox-overlay').classList.remove('open');
-};
+function closeLightbox(){
+  var overlay = document.getElementById('lightbox-overlay');
+  overlay.classList.remove('open');
+  unlockBody();
+  // BUG FIX: освобождаем память, занятую под object URL превью чека
+  var img = document.getElementById('lightbox-img');
+  if(img && img.src && img.src.indexOf('blob:') === 0){
+    URL.revokeObjectURL(img.src);
+    img.src = '';
+  }
+}
+document.getElementById('lightbox-close').onclick = closeLightbox;
 document.getElementById('lightbox-overlay').onclick = function(e){
-  if(e.target === this) this.classList.remove('open');
+  if(e.target === this) closeLightbox();
+};
+
+// ============================================================
+// NOTIFY CLIENT MODAL ("Написать" на заявке)
+// ============================================================
+var notifyingOrderId = null;
+
+function openNotifyClientModal(orderId){
+  notifyingOrderId = orderId;
+  var order = ordersCache.find(function(o){ return o.id === orderId; });
+  document.getElementById('notify-client-text').value = '';
+  document.getElementById('notify-client-err').style.display = 'none';
+  if(order && !order.clientId){
+    var errBox = document.getElementById('notify-client-err');
+    errBox.textContent = 'У этой заявки нет привязанного посетителя сайта (заказ мог быть оформлен до обновления) — отправить не получится.';
+    errBox.style.display = 'block';
+  }
+  document.getElementById('notify-client-modal').classList.add('open');
+  lockBody();
+  setTimeout(function(){ document.getElementById('notify-client-text').focus(); }, 150);
+}
+function closeNotifyClientModal(){
+  document.getElementById('notify-client-modal').classList.remove('open');
+  unlockBody();
+  notifyingOrderId = null;
+}
+document.getElementById('notify-client-close').onclick = closeNotifyClientModal;
+document.getElementById('notify-client-cancel').onclick = closeNotifyClientModal;
+document.getElementById('notify-client-modal').onclick = function(e){
+  if(e.target === this) closeNotifyClientModal();
+};
+
+document.getElementById('notify-client-send').onclick = function(){
+  var text = document.getElementById('notify-client-text').value.trim();
+  var errBox = document.getElementById('notify-client-err');
+  if(!text){
+    errBox.textContent = 'Введите текст сообщения.';
+    errBox.style.display = 'block';
+    return;
+  }
+  if(!notifyingOrderId) return;
+  var btn = this;
+  btn.disabled = true;
+  apiFetch('/api/admin/orders/' + notifyingOrderId + '/notify', {
+    method: 'POST',
+    body: JSON.stringify({ text: text })
+  }).then(function(){
+    showToast('Уведомление отправлено ✓');
+    closeNotifyClientModal();
+  }).catch(function(e){
+    errBox.textContent = e.message;
+    errBox.style.display = 'block';
+  }).finally(function(){ btn.disabled = false; });
 };
 
 function formatCardNum(num){
@@ -3626,6 +3925,58 @@ setInterval(pollSupportUnreadBadge, 15000);
 pollSupportUnreadBadge();
 
 // ============================================================
+// PERSONAL BROADCAST NOTIFICATIONS (from admin, e.g. "Написать" на заявке)
+// Показывается поверх всего сайта, даже если ничего не открыто.
+// ============================================================
+var broadcastQueue = [];
+var broadcastShowing = false;
+
+function pollBroadcastNotifications(){
+  apiFetch('/api/notifications?clientId=' + encodeURIComponent(supportClientId)).then(function(data){
+    var list = data.notifications || [];
+    if(!list.length) return;
+    list.forEach(function(n){
+      if(broadcastQueue.some(function(q){ return q.id === n.id; })) return;
+      broadcastQueue.push(n);
+    });
+    showNextBroadcast();
+  }).catch(function(){});
+}
+
+function showNextBroadcast(){
+  if(broadcastShowing || !broadcastQueue.length) return;
+  var n = broadcastQueue[0];
+  broadcastShowing = true;
+  document.getElementById('broadcast-title').textContent = n.title || 'Произошла ошибка';
+  document.getElementById('broadcast-text').textContent = n.text || '';
+  document.getElementById('broadcast-overlay').classList.add('open');
+  lockBody();
+}
+
+function closeCurrentBroadcast(){
+  var n = broadcastQueue.shift();
+  document.getElementById('broadcast-overlay').classList.remove('open');
+  unlockBody();
+  broadcastShowing = false;
+  if(n){
+    apiFetch('/api/notifications/ack', {
+      method: 'POST',
+      body: JSON.stringify({ clientId: supportClientId, id: n.id })
+    }).catch(function(){});
+  }
+  // Если в очереди есть ещё уведомления — покажем следующее
+  setTimeout(showNextBroadcast, 300);
+}
+
+document.getElementById('broadcast-close-btn').onclick = closeCurrentBroadcast;
+document.getElementById('broadcast-overlay').onclick = function(e){
+  if(e.target === this) closeCurrentBroadcast();
+};
+
+setInterval(pollBroadcastNotifications, 8000);
+pollBroadcastNotifications();
+
+// ============================================================
 // SUPPORT CHAT — ADMIN PANEL
 // ============================================================
 var supportTickets = [];
@@ -3673,7 +4024,7 @@ function renderSupportTicketList(){
   list.innerHTML = supportTickets.map(function(t){
     var active = t.id === supportActiveTicketId;
     var preview = t.status === 'closed' ? 'закрыто' : (t.unread_admin > 0 ? 'новое сообщение' : 'открыт диалог');
-    return '<div class="admin-support-item'+(active?' active':'')+'" data-id="'+ t.id +'">'+
+    return '<div class="admin-support-item'+(active?' active':'')+'" data-id="'+ esc(t.id) +'">'+
       '<div class="admin-support-item-top">'+
         '<span class="admin-support-item-num">Заявка #'+ t.ticket_number +'</span>'+
         (t.unread_admin > 0 ? '<span class="admin-support-item-unread">'+ t.unread_admin +'</span>' : '<span class="admin-support-item-time">'+ fmtTicketTime(t.last_message_at) +'</span>')+
