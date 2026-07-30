@@ -1055,18 +1055,20 @@ footer{
 
 /* ADMIN BUTTON */
 .admin-trigger{
-  position:fixed;
-  bottom:20px;
-  right:20px;
+  display:flex; align-items:center; justify-content:center;
   width:42px; height:42px;
   border-radius:50%;
   background:var(--panel);
   border:1px solid var(--line);
   color:var(--text-dim);
-  display:flex; align-items:center; justify-content:center;
   cursor:pointer;
-  z-index:100;
   transition:border-color .2s, color .2s;
+  margin-left:auto;
+}
+.admin-trigger-wrap{
+  display:flex;
+  justify-content:flex-end;
+  padding:18px 20px 8px 20px;
 }
 .admin-trigger:hover{border-color:var(--red); color:var(--red-bright);}
 
@@ -1360,7 +1362,16 @@ footer{
     <a href="#" class="btn outline">Посмотреть бесплатно</a>
   </div>
 
-  <footer>Оплата любой картой · Отмена подписки в любой момент из личного кабинета.</footer>
+  <footer>
+    Принимаем оплату: банковские карты · Telegram Stars (<a href="https://t.me/Manager_zhaoa" target="_blank" style="color:inherit">@Manager_zhaoa</a>) · NFT (<a href="https://t.me/Manager_zhaoa" target="_blank" style="color:inherit">@Manager_zhaoa</a>)
+  </footer>
+
+  <!-- Admin trigger — в самом конце сайта, справа -->
+  <div class="admin-trigger-wrap">
+    <button class="admin-trigger" id="admin-trigger" title="Управление тарифами">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+  </div>
 </div>
 
 <!-- Payment modal -->
@@ -1401,11 +1412,6 @@ footer{
   <img id="lightbox-img" src="" alt="Чек">
 </div>
 
-
-<!-- Admin trigger -->
-<button class="admin-trigger" id="admin-trigger" title="Управление тарифами">
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-</button>
 
 <!-- Login modal -->
 <div class="modal-overlay" id="login-modal">
