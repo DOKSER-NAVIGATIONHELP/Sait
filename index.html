@@ -950,9 +950,9 @@ footer{
 .order-receipt-link img{width:36px; height:36px; object-fit:cover; border-radius:5px;}
 .order-receipt-link .file-ico{width:36px; height:36px; border-radius:5px; background:var(--red-dim); color:var(--red-bright); display:flex; align-items:center; justify-content:center; flex-shrink:0;}
 .order-receipt-link span{font-size:12px; font-weight:600;}
-.order-actions{display:flex; gap:8px;}
+.order-actions{display:flex; flex-wrap:wrap; gap:8px;}
 .order-actions button{
-  flex:1;
+  flex:1 1 100px;
   padding:9px;
   border-radius:7px;
   font-size:12px;
@@ -961,6 +961,7 @@ footer{
   border:1px solid var(--line);
   background:transparent;
   color:var(--text);
+  white-space:nowrap;
 }
 .order-actions .approve-btn:hover{border-color:#4CC98A; color:#4CC98A;}
 .order-actions .reject-btn:hover{border-color:#A83328; color:#A83328;}
@@ -1054,6 +1055,7 @@ footer{
 .log-item.event-order_submit{border-left:3px solid #a83328;}
 .log-item.event-admin_login_ok{border-left:3px solid #2a7a2a;}
 .log-item.event-admin_login_fail{border-left:3px solid #8b2820;}
+.log-item.event-click{border-left:3px solid #c98a2c;}
 .log-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;gap:8px;flex-wrap:wrap;}
 .log-event{
   font-weight:700;
@@ -1068,7 +1070,18 @@ footer{
 .log-event.ev-admin_login_ok{background:rgba(42,122,42,.35);color:#6dca6d;}
 .log-event.ev-admin_login_fail{background:rgba(139,40,32,.5);color:#e07070;}
 .log-event.ev-request{background:rgba(40,40,80,.5);color:#a0a0d0;}
-.log-date{color:var(--text-dim);font-size:11px;white-space:nowrap;}
+.log-event.ev-click{background:rgba(201,138,44,.35);color:#e8c07a;}
+.log-user-badge{
+  font-weight:700;
+  font-size:11px;
+  padding:2px 8px;
+  border-radius:20px;
+  background:rgba(70,130,220,.25);
+  color:#8fb8ee;
+  white-space:nowrap;
+}
+.log-user-badge.log-user-badge-unknown{background:rgba(120,120,120,.2);color:var(--text-dim);}
+.log-date{color:var(--text-dim);font-size:11px;white-space:nowrap;margin-left:auto;}
 .log-ip{font-weight:700;color:var(--red-bright);margin-bottom:3px;}
 .log-ua{color:var(--text-dim);word-break:break-all;line-height:1.4;}
 .log-path{color:#8888aa;word-break:break-all;margin-top:2px;}
@@ -1137,6 +1150,11 @@ footer{
   -webkit-overflow-scrolling:touch;
 }
 .modal-overlay.open{display:flex;}
+/* BUG FIX: окно "Написать клиенту" открывается поверх уже открытой админ-панели
+   (оба используют .modal-overlay с одинаковым z-index, и без этого модификатора
+   побеждал тот, что раньше в разметке — админ-панель). Этот модификатор поднимает
+   нужное окно выше, чтобы оно не пряталось за админкой. */
+.modal-overlay.modal-overlay--top{ z-index:250; }
 
 .modal{
   background:var(--panel);
@@ -1365,6 +1383,10 @@ footer{
   .pay-header{ padding:18px 0 16px; }
   .pay-sheet{ padding:0 16px 48px; }
   .req-card{ padding:12px 14px; gap:10px; }
+  /* BUG FIX: на узких экранах 3 кнопки заявки (Подтвердить/Отклонить/Написать)
+     в один ряд сжимались и текст переполнял кнопки — раскладываем в столбик. */
+  .order-actions{ flex-direction:column; }
+  .order-actions button{ flex-basis:auto; width:100%; }
 }
 
 @media(prefers-reduced-motion:reduce){
@@ -1716,6 +1738,11 @@ footer{
   align-items:center;
   justify-content:center;
   padding:20px;
+  /* BUG FIX: не было прокрутки — длинный текст уведомления (до 2000 символов)
+     на невысоком экране (телефон в альбомной ориентации, маленький браузер)
+     вылезал за пределы viewport и кнопка "Понятно" становилась недоступна. */
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
 }
 .broadcast-overlay.open{display:flex;}
 .broadcast-box{
@@ -1728,6 +1755,9 @@ footer{
   text-align:center;
   box-shadow:0 20px 60px rgba(0,0,0,.6);
   animation:fadeSlideIn .28s cubic-bezier(.22,1,.36,1);
+  margin:auto;
+  max-height:calc(100vh - 40px);
+  overflow-y:auto;
 }
 .broadcast-icon{
   width:52px; height:52px;
@@ -2056,12 +2086,14 @@ footer{
         <select id="logs-filter-type" class="logs-select">
           <option value="all">Все события</option>
           <option value="request">Посещения</option>
+          <option value="click">👆 Клики по кнопкам</option>
           <option value="order_submit">Заявки</option>
           <option value="admin_login_ok">Входы в админку</option>
           <option value="admin_login_fail">Неверный пароль</option>
         </select>
         <button class="btn-sm" id="logs-refresh-btn">↻ Обновить</button>
         <button class="btn-sm danger" id="logs-clear-btn">🗑 Очистить</button>
+        <input type="text" id="logs-user-filter" class="logs-select" placeholder="Фильтр по ID польз. (напр. 7)" style="max-width:200px;">
       </div>
       <div id="logs-stats-bar"></div>
       <div id="logs-list"><div class="order-empty">Загрузка логов…</div></div>
@@ -2335,6 +2367,7 @@ document.getElementById('bonus-save').onclick = function(){
 
 // Открытие/закрытие всплывающего окна бонуса (одноразовое, можно закрыть)
 document.getElementById('bonus-cta-btn').onclick = function(){
+  trackClick('Нажал кнопку бонуса "Узнать как получить"', 'бонус');
   document.getElementById('bonus-modal-title').textContent = bonus.modalTitle;
   document.getElementById('bonus-modal-text').textContent = bonus.modalText;
   document.getElementById('bonus-modal').classList.add('open');
@@ -3410,12 +3443,16 @@ function openNotifyClientModal(orderId){
     errBox.textContent = 'У этой заявки нет привязанного посетителя сайта (заказ мог быть оформлен до обновления) — отправить не получится.';
     errBox.style.display = 'block';
   }
-  document.getElementById('notify-client-modal').classList.add('open');
+  // BUG FIX: окно "Написать" раньше имело тот же z-index, что и админ-панель,
+  // из-за чего при открытии админки поверх него окно пряталось "под" ней и
+  // приходилось закрывать всю админ-панель, чтобы отправить сообщение.
+  // Добавляем модификатор .modal-overlay--top, который поднимает это окно выше.
+  document.getElementById('notify-client-modal').classList.add('open', 'modal-overlay--top');
   lockBody();
   setTimeout(function(){ document.getElementById('notify-client-text').focus(); }, 150);
 }
 function closeNotifyClientModal(){
-  document.getElementById('notify-client-modal').classList.remove('open');
+  document.getElementById('notify-client-modal').classList.remove('open', 'modal-overlay--top');
   unlockBody();
   notifyingOrderId = null;
 }
@@ -3475,6 +3512,7 @@ function renderPayMethods(){
 }
 
 function selectPayMethod(id){
+  trackClick('Выбрал способ оплаты', 'оплата', id + (currentPayTier && currentPayTier.name ? ' (тариф: ' + currentPayTier.name + ')' : ''));
   activeMethod = id;
   // Hide the methods list and show the requisites view
   document.getElementById('pay-methods-list').style.display = 'none';
@@ -3542,6 +3580,7 @@ function hideAllReq(){
 }
 
 document.getElementById('pay-close').onclick = function(){
+  trackClick('Закрыл окно оплаты (не завершил)', 'оплата', currentPayTier && currentPayTier.name ? currentPayTier.name : '');
   document.getElementById('pay-modal').classList.remove('open');
   unlockBody();
 };
@@ -3581,6 +3620,7 @@ function copyReq(el, val){
 document.addEventListener('click', function(e){
   var target = e.target.closest('.js-open-pay');
   if(!target) return;
+  trackClick('Нажал "Оформить" на тарифе "' + target.getAttribute('data-name') + '"', 'тарифы', target.getAttribute('data-name'));
   openPayModal(
     target.getAttribute('data-name'),
     parseFloat(target.getAttribute('data-rub'))  || 0,
@@ -3594,7 +3634,10 @@ document.getElementById('pay-modal').addEventListener('click', function(e){
   var target = e.target.closest('.js-copy');
   if(!target) return;
   var val = target.getAttribute('data-copy');
-  if(val) copyReq(target, val);
+  if(val){
+    trackClick('Скопировал реквизиты для оплаты', 'оплата', (activeMethod || '') + (currentPayTier && currentPayTier.name ? ' (тариф: ' + currentPayTier.name + ')' : ''));
+    copyReq(target, val);
+  }
 });
 
 
@@ -3641,7 +3684,8 @@ function renderLogsStats(data){
     'order_submit': 'Заявки',
     'admin_login_ok': 'Входы',
     'admin_login_fail': 'Неверный пароль',
-    'visit': 'Визиты'
+    'visit': 'Визиты',
+    'click': 'Клики'
   };
 
   var boxes = '<div class="logs-stats">';
@@ -3667,8 +3711,18 @@ function renderLogsStats(data){
 
 function renderLogsList(){
   var list = document.getElementById('logs-list');
-  if(!logsCache.length){
-    list.innerHTML = '<div class="order-empty">Логов пока нет.</div>';
+  var userFilterEl = document.getElementById('logs-user-filter');
+  var userFilter = userFilterEl ? userFilterEl.value.trim().replace('#','') : '';
+
+  var filtered = logsCache;
+  if(userFilter){
+    filtered = logsCache.filter(function(log){
+      return String(log.user_numeric_id || '') === userFilter;
+    });
+  }
+
+  if(!filtered.length){
+    list.innerHTML = '<div class="order-empty">'+ (userFilter ? 'Нет событий пользователя #'+esc(userFilter)+' на этой странице.' : 'Логов пока нет.') +'</div>';
     return;
   }
 
@@ -3677,10 +3731,11 @@ function renderLogsList(){
     'visit': 'Визит',
     'order_submit': '📋 Заявка',
     'admin_login_ok': '🔑 Вход',
-    'admin_login_fail': '🚫 Неверный пароль'
+    'admin_login_fail': '🚫 Неверный пароль',
+    'click': '👆 Клик'
   };
 
-  list.innerHTML = logsCache.map(function(log){
+  list.innerHTML = filtered.map(function(log){
     var dt = new Date(log.created_at);
     var dateStr = dt.toLocaleDateString('ru-RU') + ' ' + dt.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
     var label = eventLabels[log.event_type] || log.event_type;
@@ -3693,13 +3748,22 @@ function renderLogsList(){
         if(ex.contact)  parts.push('Контакт: <b>'+ esc(ex.contact) +'</b>');
         if(ex.methodId) parts.push('Способ: '+ esc(ex.methodId));
         if(ex.orderId)  parts.push('ID: '+ esc(ex.orderId.slice(0,8))+'…');
+        if(ex.label)    parts.push('Кнопка: <b>'+ esc(ex.label) +'</b>');
+        if(ex.section)  parts.push('Раздел: '+ esc(ex.section));
+        if(ex.value)    parts.push('Значение: '+ esc(String(ex.value).slice(0,120)));
+        if(ex.pagePath) parts.push('Страница: '+ esc(ex.pagePath));
         if(parts.length) extra = '<div class="log-extra">'+ parts.join(' · ') +'</div>';
       }catch(e){}
     }
+    // Бейдж с числовым ID пользователя (1, 2, 3, ...) — виден сразу в каждой строке лога
+    var userBadge = log.user_numeric_id
+      ? '<span class="log-user-badge" title="Пользователь #'+ log.user_numeric_id +'">🆔 #'+ log.user_numeric_id +'</span>'
+      : '<span class="log-user-badge log-user-badge-unknown" title="ID пользователя неизвестен">🆔 —</span>';
     return ''+
     '<div class="log-item event-'+ log.event_type +'">'+
       '<div class="log-top">'+
         '<span class="log-event ev-'+ log.event_type +'">'+ label +'</span>'+
+        userBadge +
         '<span class="log-date">'+ dateStr +'</span>'+
       '</div>'+
       '<div class="log-ip">'+ esc(log.ip||'—') + (log.country ? ' <span style="color:var(--text-dim);font-weight:400">['+ esc(log.country) +']</span>' : '') +'</div>'+
@@ -3734,6 +3798,12 @@ document.getElementById('logs-filter-type').onchange = function(){
   logsOffset = 0;
   refreshLogsFromApi();
 };
+
+// Фильтр по номеру пользователя работает мгновенно на уже загруженной странице
+// (без похода на сервер) — просто перерисовывает список.
+document.getElementById('logs-user-filter').addEventListener('input', function(){
+  renderLogsList();
+});
 
 document.getElementById('logs-refresh-btn').onclick = function(){
   logsOffset = 0;
@@ -3792,6 +3862,59 @@ function getOrCreateClientId(){
 }
 
 var supportClientId = getOrCreateClientId();
+
+// ============================================================
+// ЧИСЛОВОЙ ID ПОЛЬЗОВАТЕЛЯ (1, 2, 3, ...) — для удобных логов
+// ============================================================
+// Сервер выдаёт простой числовой номер (первый пользователь в системе — #1,
+// второй — #2 и т.д.), привязанный к тому же ключу, что и support-чат.
+// Пока сервер не ответил, трекинг всё равно отправляется — сервер сам
+// определит/создаст номер по clientId, если он не передан явно.
+var NUMERIC_ID_KEY = 'numeric_user_id_v1';
+var myNumericId = localStorage.getItem(NUMERIC_ID_KEY) ? Number(localStorage.getItem(NUMERIC_ID_KEY)) : null;
+
+function registerNumericId(){
+  apiFetch('/api/client-id/register', {
+    method: 'POST',
+    body: JSON.stringify({ clientKey: supportClientId })
+  }).then(function(data){
+    if(data && data.numericId){
+      myNumericId = data.numericId;
+      localStorage.setItem(NUMERIC_ID_KEY, String(myNumericId));
+    }
+  }).catch(function(e){
+    console.warn('Не удалось получить числовой ID пользователя:', e);
+  });
+}
+registerNumericId();
+
+// ============================================================
+// ПОДРОБНЫЙ ТРЕКИНГ ДЕЙСТВИЙ ПОЛЬЗОВАТЕЛЯ (клики по кнопкам)
+// ============================================================
+// Отправляет на сервер отчёт "какая кнопка нажата, где, с каким значением".
+// Сервер сам пишет это в БД и шлёт подробное сообщение в Telegram.
+// label    — человекочитаемое название кнопки/действия ("Оформить тариф VIP")
+// section  — раздел сайта ("тарифы", "оплата", "поддержка", "админка", ...)
+// value    — доп. значение, если есть (например, выбранный способ оплаты)
+function trackClick(label, section, value){
+  try{
+    apiFetch('/api/track', {
+      method: 'POST',
+      body: JSON.stringify({
+        label: label,
+        section: section || '',
+        value: value !== undefined ? value : '',
+        pagePath: (location.pathname || '') + (location.hash || ''),
+        clientId: supportClientId,
+        clientNumericId: myNumericId
+      })
+    }).catch(function(e){
+      console.warn('Трекинг клика не отправлен:', e);
+    });
+  }catch(e){
+    console.warn('Ошибка трекинга клика:', e);
+  }
+}
 var supportTicketId = localStorage.getItem(SUPPORT_TICKET_KEY) || null;
 var supportPollTimer = null;
 var supportChatOpen = false;
@@ -3842,6 +3965,7 @@ function stopSupportPolling(){
 }
 
 function openSupportChat(){
+  trackClick('Открыл чат поддержки', 'поддержка');
   supportChatOpen = true;
   document.getElementById('support-chat-overlay').classList.add('open');
   lockBody();
@@ -3882,6 +4006,7 @@ function sendSupportMessage(){
   var input = document.getElementById('support-chat-input');
   var text = input.value.trim();
   if(!text) return;
+  trackClick('Отправил сообщение в поддержку', 'поддержка', text.slice(0, 100));
   var sendBtn = document.getElementById('support-chat-send');
   sendBtn.disabled = true;
   input.value = '';
