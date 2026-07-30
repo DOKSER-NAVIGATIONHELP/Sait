@@ -387,114 +387,54 @@ h1{
 }
 .free p{font-size:13px; color:var(--text-dim); line-height:1.55; margin:0 0 16px;}
 
-/* BONUS TIER CARD */
-.bonus-card{
+/* BONUS TARIFF-STYLE BLOCK */
+.bonus{
   position:relative;
   margin:20px 24px 0;
   border:1px solid var(--red-dim);
   border-radius:14px;
-  padding:24px;
-  overflow:hidden;
-  background:linear-gradient(180deg, rgba(139,40,32,.10), rgba(139,40,32,.02));
+  background:linear-gradient(180deg, rgba(193,68,60,.10), var(--panel) 65%);
+  padding:22px;
+  text-align:center;
+  box-shadow:0 0 0 1px rgba(193,68,60,.1);
 }
-.bonus-glow{
-  position:absolute;
-  top:-60px; right:-40px;
-  width:160px; height:160px;
-  background:radial-gradient(circle, var(--red-bright) 0%, transparent 70%);
-  opacity:.18;
-  pointer-events:none;
-}
-.bonus-tag{
+.bonus .tag{
   display:inline-block;
   font-size:11px;
   font-weight:700;
   letter-spacing:.05em;
   text-transform:uppercase;
   color:var(--red-bright);
-  background:var(--red-dim);
-  border-radius:6px;
-  padding:4px 9px;
+  background:rgba(92,26,22,.35);
+  border:1px solid var(--red-dim);
+  border-radius:5px;
+  padding:3px 10px;
   margin-bottom:12px;
 }
-.bonus-card h3{
+.bonus h3{
   font-family:var(--font-display);
   font-weight:700;
-  font-size:17px;
-  margin:0 0 6px;
-  position:relative;
-  z-index:1;
+  font-size:19px;
+  line-height:1.3;
+  margin:0 0 18px;
 }
-.bonus-card p{
-  font-size:13px;
-  color:var(--text-dim);
-  line-height:1.55;
-  margin:0 0 16px;
-  position:relative;
-  z-index:1;
-}
-.bonus-btn{
-  width:100%;
-  border:none;
-  cursor:pointer;
-  font-family:inherit;
-  position:relative;
-  z-index:1;
-}
-
-/* BONUS MODAL */
-.bonus-modal-overlay{
-  display:none;
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.6);
-  backdrop-filter:blur(3px);
-  z-index:200;
+.bonus-cta{
+  display:inline-flex;
   align-items:center;
   justify-content:center;
-  padding:20px;
-}
-.bonus-modal-overlay.open{display:flex;}
-.bonus-modal{
-  background:var(--panel);
-  border:1px solid var(--red-dim);
-  border-radius:14px;
-  max-width:380px;
   width:100%;
-  padding:24px;
-  position:relative;
-  box-shadow:0 20px 60px rgba(0,0,0,.5);
-}
-.bonus-modal-close{
-  position:absolute;
-  top:14px; right:14px;
-  width:28px; height:28px;
-  border-radius:50%;
-  border:1px solid var(--line);
-  background:transparent;
-  color:var(--text-dim);
-  cursor:pointer;
-  font-size:15px;
-  line-height:1;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
-.bonus-modal-close:hover{border-color:var(--red); color:var(--red-bright);}
-.bonus-modal-title{
+  padding:14px;
+  border-radius:8px;
   font-family:var(--font-display);
   font-weight:700;
-  font-size:16px;
-  margin:0 0 12px;
-  padding-right:24px;
+  font-size:14px;
+  border:1px solid var(--red);
+  background:var(--red);
+  color:#0A0909;
+  cursor:pointer;
+  transition:filter .2s ease, transform .2s ease;
 }
-.bonus-modal-text{
-  font-size:13.5px;
-  color:var(--text-dim);
-  line-height:1.6;
-  margin:0;
-  white-space:pre-line;
-}
+.bonus-cta:hover{ filter:brightness(1.1); transform:translateY(-2px); }
 
 footer{
   padding:44px 24px 50px;
@@ -1430,6 +1370,338 @@ footer{
   .reveal{opacity:1;transform:none;transition:none;}
   .blackout{transition:none;}
 }
+
+/* ============================================================
+   SUPPORT CHAT WIDGET
+   ============================================================ */
+.support-fab{
+  position:fixed;
+  left:18px; bottom:18px;
+  width:56px; height:56px;
+  border-radius:50%;
+  background:var(--red);
+  border:1px solid var(--red-bright);
+  color:#0A0909;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer;
+  z-index:500;
+  box-shadow:0 8px 24px rgba(139,40,32,.45);
+  transition:transform .2s ease, box-shadow .2s ease;
+}
+.support-fab:hover{ transform:translateY(-2px) scale(1.04); box-shadow:0 10px 30px rgba(139,40,32,.6); }
+.support-fab:active{ transform:scale(.96); }
+.support-fab .support-badge{
+  position:absolute;
+  top:-4px; right:-4px;
+  min-width:19px; height:19px;
+  padding:0 5px;
+  border-radius:10px;
+  background:var(--red-bright);
+  color:#fff;
+  font-family:var(--font-display);
+  font-size:10.5px;
+  font-weight:700;
+  display:flex; align-items:center; justify-content:center;
+  border:2px solid var(--bg);
+}
+.support-fab .support-badge:empty{display:none;}
+
+.support-chat-overlay{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.6);
+  z-index:501;
+}
+.support-chat-overlay.open{display:block;}
+
+.support-chat{
+  position:fixed;
+  left:0; right:0; bottom:0;
+  max-width:420px;
+  margin:0 auto;
+  height:min(640px, 92vh);
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-bottom:none;
+  border-radius:18px 18px 0 0;
+  display:flex;
+  flex-direction:column;
+  z-index:502;
+  animation:slideUpChat .28s cubic-bezier(.22,1,.36,1);
+  box-shadow:0 -10px 40px rgba(0,0,0,.5);
+}
+@media(min-width:480px){
+  .support-chat{ left:auto; right:18px; bottom:18px; border-radius:18px; border-bottom:1px solid var(--line); height:min(600px, 85vh); }
+}
+@keyframes slideUpChat{
+  from{opacity:0; transform:translateY(24px);}
+  to{opacity:1; transform:translateY(0);}
+}
+
+.support-chat-header{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:16px 16px;
+  border-bottom:1px solid var(--line);
+  flex-shrink:0;
+}
+.support-chat-avatar{
+  width:38px; height:38px;
+  border-radius:50%;
+  background:linear-gradient(135deg, var(--red), var(--red-bright));
+  display:flex; align-items:center; justify-content:center;
+  flex-shrink:0;
+  color:#0A0909;
+}
+.support-chat-title{
+  font-family:var(--font-display);
+  font-weight:700;
+  font-size:14.5px;
+  line-height:1.3;
+}
+.support-chat-status{
+  font-size:11.5px;
+  color:var(--text-dim);
+  display:flex;
+  align-items:center;
+  gap:5px;
+  margin-top:2px;
+}
+.support-chat-status .dot{
+  width:6px; height:6px;
+  border-radius:50%;
+  background:#3EA85A;
+  box-shadow:0 0 6px #3EA85A;
+  flex-shrink:0;
+}
+.support-chat-close{
+  margin-left:auto;
+  background:transparent;
+  border:1px solid var(--line);
+  color:var(--text-dim);
+  width:34px; height:34px;
+  border-radius:50%;
+  cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  font-size:16px;
+  flex-shrink:0;
+  transition:border-color .2s, color .2s;
+}
+.support-chat-close:hover{ border-color:var(--red); color:var(--red-bright); }
+
+.support-chat-body{
+  flex:1;
+  overflow-y:auto;
+  padding:16px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  -webkit-overflow-scrolling:touch;
+}
+.support-chat-empty{
+  margin:auto;
+  text-align:center;
+  color:var(--text-dim);
+  font-size:13px;
+  line-height:1.6;
+  padding:20px;
+}
+
+.support-msg-row{
+  display:flex;
+  flex-direction:column;
+  max-width:78%;
+}
+.support-msg-row.client{ align-self:flex-end; align-items:flex-end; }
+.support-msg-row.admin{ align-self:flex-start; align-items:flex-start; }
+.support-msg-bubble{
+  padding:10px 13px;
+  border-radius:14px;
+  font-size:13.5px;
+  line-height:1.5;
+  white-space:pre-wrap;
+  word-break:break-word;
+}
+.support-msg-row.client .support-msg-bubble{
+  background:var(--red);
+  color:#0A0909;
+  border-bottom-right-radius:4px;
+}
+.support-msg-row.admin .support-msg-bubble{
+  background:#1B1414;
+  border:1px solid var(--line);
+  color:var(--text);
+  border-bottom-left-radius:4px;
+}
+.support-msg-time{
+  font-size:10px;
+  color:var(--text-dim);
+  margin-top:4px;
+  padding:0 4px;
+}
+
+.support-chat-footer{
+  display:flex;
+  align-items:flex-end;
+  gap:8px;
+  padding:12px 14px;
+  border-top:1px solid var(--line);
+  flex-shrink:0;
+}
+.support-chat-input{
+  flex:1;
+  resize:none;
+  background:#150F0F;
+  border:1px solid var(--line);
+  border-radius:14px;
+  color:var(--text);
+  font-family:var(--font-body);
+  font-size:13.5px;
+  padding:10px 14px;
+  max-height:110px;
+  min-height:40px;
+  line-height:1.4;
+}
+.support-chat-input:focus{ outline:none; border-color:var(--red-dim); }
+.support-chat-input::placeholder{ color:var(--text-dim); }
+.support-chat-send{
+  width:40px; height:40px;
+  border-radius:50%;
+  background:var(--red);
+  border:none;
+  color:#0A0909;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer;
+  flex-shrink:0;
+  transition:filter .2s ease, transform .2s ease;
+}
+.support-chat-send:hover{ filter:brightness(1.1); transform:translateY(-1px); }
+.support-chat-send:disabled{ opacity:.4; cursor:default; transform:none; }
+
+@media(max-width:480px){
+  .support-fab{ left:14px; bottom:14px; width:52px; height:52px; }
+}
+
+/* ============================================================
+   ADMIN SUPPORT TAB
+   ============================================================ */
+.admin-support-wrap{
+  display:flex;
+  gap:0;
+  border:1px solid var(--line);
+  border-radius:12px;
+  overflow:hidden;
+  height:520px;
+  max-height:70vh;
+}
+.admin-support-list{
+  width:220px;
+  flex-shrink:0;
+  border-right:1px solid var(--line);
+  overflow-y:auto;
+  background:#0A0606;
+}
+.admin-support-item{
+  padding:12px 14px;
+  border-bottom:1px solid var(--line);
+  cursor:pointer;
+  transition:background .15s;
+}
+.admin-support-item:hover{ background:rgba(255,255,255,.03); }
+.admin-support-item.active{ background:rgba(139,40,32,.18); }
+.admin-support-item-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:6px;
+  margin-bottom:4px;
+}
+.admin-support-item-num{
+  font-family:var(--font-display);
+  font-weight:700;
+  font-size:12.5px;
+  color:var(--red-bright);
+}
+.admin-support-item-unread{
+  min-width:17px; height:17px;
+  padding:0 5px;
+  border-radius:9px;
+  background:var(--red);
+  color:#0A0909;
+  font-size:10px;
+  font-weight:700;
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--font-display);
+}
+.admin-support-item-time{
+  font-size:10.5px;
+  color:var(--text-dim);
+}
+.admin-support-item-preview{
+  font-size:11.5px;
+  color:var(--text-dim);
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.admin-support-item-status{
+  display:inline-block;
+  font-size:9.5px;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+  margin-top:4px;
+  padding:1px 6px;
+  border-radius:4px;
+  font-weight:700;
+}
+.admin-support-item-status.open{ background:rgba(62,168,90,.15); color:#3EA85A; }
+.admin-support-item-status.closed{ background:rgba(255,255,255,.06); color:var(--text-dim); }
+
+.admin-support-chat{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  min-width:0;
+}
+.admin-support-chat-header{
+  padding:12px 16px;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  flex-shrink:0;
+}
+.admin-support-chat-body{
+  flex:1;
+  overflow-y:auto;
+  padding:16px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.admin-support-chat-footer{
+  display:flex;
+  gap:8px;
+  padding:12px;
+  border-top:1px solid var(--line);
+  flex-shrink:0;
+}
+.admin-support-empty-state{
+  margin:auto;
+  color:var(--text-dim);
+  font-size:13px;
+  text-align:center;
+  padding:20px;
+}
+
+@media(max-width:700px){
+  .admin-support-wrap{ flex-direction:column; height:auto; max-height:none; }
+  .admin-support-list{ width:100%; max-height:220px; border-right:none; border-bottom:1px solid var(--line); }
+  .admin-support-chat{ min-height:420px; }
+}
 </style>
 </head>
 <body>
@@ -1464,23 +1736,13 @@ footer{
   <div class="rail"><div class="rail-fill"></div></div>
   <div class="rail-caption"><span>меньше доступа</span><span>полный доступ</span></div>
 
-  <div class="free reveal" id="free-block">
-    <span class="tag">Пробный уровень</span>
-    <h3>Бесплатный обзор</h3>
-    <p>Малая часть материалов — чтобы понять, стоит ли брать полный доступ.</p>
-    <a href="#" class="btn outline">Посмотреть бесплатно</a>
-  </div>
-
-  <div class="bonus-card reveal" id="bonus-card">
-    <div class="bonus-glow"></div>
-    <span class="bonus-tag">Специальное предложение</span>
+  <div class="bonus reveal in" id="bonus-block">
+    <span class="tag">Бонус</span>
     <h3 id="bonus-title">Получить 5 гигабайт бесплатно!</h3>
-    <p id="bonus-sub">Выполните простое условие и получите бонус</p>
-    <button class="btn primary bonus-btn" id="bonus-btn">Получить бонус</button>
+    <button class="btn bonus-cta" id="bonus-cta-btn" type="button">Узнать как получить</button>
   </div>
 
-  <footer>
-  </footer>
+  <footer></footer>
 
   <!-- Admin trigger — в самом конце сайта, справа -->
   <div class="admin-trigger-wrap">
@@ -1490,12 +1752,33 @@ footer{
   </div>
 </div>
 
-<!-- Bonus modal -->
-<div class="bonus-modal-overlay" id="bonus-modal">
-  <div class="bonus-modal">
-    <button class="bonus-modal-close" id="bonus-modal-close">✕</button>
-    <h3 class="bonus-modal-title" id="bonus-modal-title">Как получить бонус</h3>
-    <p class="bonus-modal-text" id="bonus-modal-text">Напишите 10 комментариев в нашем тик токе, чтоб получить, и отправьте скрины в поддержку!</p>
+<!-- Support chat FAB — всегда виден в левом нижнем углу -->
+<button class="support-fab" id="support-fab" title="Тех.поддержка">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+  <span class="support-badge" id="support-badge"></span>
+</button>
+
+<div class="support-chat-overlay" id="support-chat-overlay">
+  <div class="support-chat" id="support-chat" role="dialog" aria-label="Чат тех.поддержки">
+    <div class="support-chat-header">
+      <div class="support-chat-avatar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+      </div>
+      <div style="min-width:0;flex:1;">
+        <div class="support-chat-title">Тех.поддержка</div>
+        <div class="support-chat-status"><span class="dot"></span>Онлайн — обычно отвечаем быстро</div>
+      </div>
+      <button class="support-chat-close" id="support-chat-close">✕</button>
+    </div>
+    <div class="support-chat-body" id="support-chat-body">
+      <div class="support-chat-empty">Напишите нам, если возникли вопросы по оплате, доступу или что-то не работает — ответим здесь.</div>
+    </div>
+    <div class="support-chat-footer">
+      <textarea class="support-chat-input" id="support-chat-input" placeholder="Сообщение…" rows="1"></textarea>
+      <button class="support-chat-send" id="support-chat-send" title="Отправить">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+      </button>
+    </div>
   </div>
 </div>
 
@@ -1554,6 +1837,15 @@ footer{
   </div>
 </div>
 
+<!-- Bonus info modal (one-time, closable) -->
+<div class="modal-overlay" id="bonus-modal">
+  <div class="modal">
+    <div class="modal-title" id="bonus-modal-title">Как получить бонус</div>
+    <button class="modal-close" id="bonus-modal-close">✕</button>
+    <p style="font-size:14px; line-height:1.6; color:var(--text); margin:0; white-space:pre-wrap;" id="bonus-modal-text"></p>
+  </div>
+</div>
+
 <!-- Admin panel modal -->
 <div class="modal-overlay" id="admin-modal">
   <div class="modal" style="margin:16px auto; max-height:none; overflow:visible;">
@@ -1563,8 +1855,10 @@ footer{
     <div class="admin-tabs">
       <button class="admin-tab active" data-tab="tiers">Тарифы</button>
       <button class="admin-tab" data-tab="new">+ Новый тариф</button>
+      <button class="admin-tab" data-tab="support">🆘 Тех.поддержка<span class="badge-count" id="support-badge-admin" style="display:none">0</span></button>
       <button class="admin-tab" data-tab="orders">Заявки<span class="badge-count" id="orders-badge" style="display:none">0</span></button>
       <button class="admin-tab" data-tab="requisites">Реквизиты</button>
+      <button class="admin-tab" data-tab="bonus">Бонус</button>
       <button class="admin-tab" data-tab="settings">Настройки</button>
       <button class="admin-tab" data-tab="logs">📋 Логи<span class="badge-count" id="logs-badge" style="display:none">0</span></button>
     </div>
@@ -1588,6 +1882,18 @@ footer{
       <div id="new-tier-form" class="tier-editor"></div>
       <div class="row-btns" style="margin-top:14px">
         <button class="btn-sm red" id="new-tier-save">Создать тариф</button>
+      </div>
+    </div>
+
+    <!-- TAB: SUPPORT (chat) -->
+    <div id="tab-support" style="display:none">
+      <div class="admin-support-wrap">
+        <div class="admin-support-list" id="admin-support-list">
+          <div class="admin-support-empty-state">Загрузка обращений…</div>
+        </div>
+        <div class="admin-support-chat" id="admin-support-chat">
+          <div class="admin-support-empty-state" id="admin-support-placeholder">Выберите обращение слева, чтобы открыть переписку</div>
+        </div>
       </div>
     </div>
 
@@ -1626,6 +1932,24 @@ footer{
       </div>
     </div>
 
+    <!-- TAB: BONUS -->
+    <div id="tab-bonus" style="display:none">
+      <div class="tier-editor">
+        <div class="section-label">🎁 Блок бонуса на сайте</div>
+        <div class="field"><label>Заголовок блока</label><input type="text" id="bonus-title-input" placeholder="Получить 5 гигабайт бесплатно!"></div>
+        <div class="field"><label>Текст кнопки</label><input type="text" id="bonus-btn-input" placeholder="Узнать как получить"></div>
+
+        <div class="divider"></div>
+        <div class="section-label">Всплывающее окно (открывается по кнопке)</div>
+        <div class="field"><label>Заголовок окна</label><input type="text" id="bonus-modal-title-input" placeholder="Как получить бонус"></div>
+        <div class="field"><label>Текст окна</label><textarea id="bonus-modal-text-input" rows="5" placeholder="Напишите 10 комментариев в нашем тик токе, чтоб получить, и отправьте скрины в поддержку!"></textarea></div>
+
+        <div class="row-btns" style="margin-top:14px">
+          <button class="btn-sm red" id="bonus-save">Сохранить</button>
+        </div>
+      </div>
+    </div>
+
     <!-- TAB: LOGS -->
     <div id="tab-logs" style="display:none">
       <div class="logs-toolbar">
@@ -1646,32 +1970,6 @@ footer{
 
     <!-- TAB: SETTINGS -->
     <div id="tab-settings" style="display:none">
-      <div class="tier-editor">
-        <div class="field">
-          <label>Блок бонуса — заголовок карточки</label>
-          <input type="text" id="bonus-title-input" placeholder="Получить 5 гигабайт бесплатно!">
-        </div>
-        <div class="field">
-          <label>Блок бонуса — подзаголовок карточки</label>
-          <input type="text" id="bonus-sub-input" placeholder="Выполните простое условие и получите бонус">
-        </div>
-        <div class="field">
-          <label>Текст кнопки</label>
-          <input type="text" id="bonus-btn-input" placeholder="Получить бонус">
-        </div>
-        <div class="field">
-          <label>Заголовок всплывающего окна</label>
-          <input type="text" id="bonus-modal-title-input" placeholder="Как получить бонус">
-        </div>
-        <div class="field">
-          <label>Текст всплывающего окна (условие)</label>
-          <textarea id="bonus-modal-text-input" rows="4" placeholder="Напишите 10 комментариев в нашем тик токе, чтоб получить, и отправьте скрины в поддержку!"></textarea>
-        </div>
-        <div class="row-btns">
-          <button class="btn-sm red" id="save-bonus">Сохранить блок бонуса</button>
-        </div>
-      </div>
-
       <div class="tier-editor">
         <div class="field">
           <label>Изменить пароль администратора</label>
@@ -1859,6 +2157,74 @@ function saveRequisitesToApi(r){
   return apiFetch('/api/admin/requisites', { method: 'PUT', body: JSON.stringify(r) });
 }
 
+// ============================================================
+// BONUS BLOCK DATA LAYER
+// ============================================================
+var DEFAULT_BONUS = {
+  title: 'Получить 5 гигабайт бесплатно!',
+  btnText: 'Узнать как получить',
+  modalTitle: 'Как получить бонус',
+  modalText: 'Напишите 10 комментариев в нашем тик токе, чтоб получить, и отправьте скрины в поддержку!'
+};
+
+// Публичная страница — текст бонуса без авторизации
+function fetchBonusFromApi(){
+  return apiFetch('/api/bonus').then(function(data){
+    return Object.assign({}, DEFAULT_BONUS, data.bonus || {});
+  });
+}
+// Админка — сохранение текста бонуса на сервер
+function saveBonusToApi(b){
+  return apiFetch('/api/admin/bonus', { method: 'PUT', body: JSON.stringify(b) });
+}
+
+var bonus = JSON.parse(JSON.stringify(DEFAULT_BONUS));
+
+function renderBonus(){
+  document.getElementById('bonus-title').textContent = bonus.title;
+  document.getElementById('bonus-cta-btn').textContent = bonus.btnText;
+}
+
+function fillBonusForm(){
+  document.getElementById('bonus-title-input').value = bonus.title;
+  document.getElementById('bonus-btn-input').value = bonus.btnText;
+  document.getElementById('bonus-modal-title-input').value = bonus.modalTitle;
+  document.getElementById('bonus-modal-text-input').value = bonus.modalText;
+}
+
+document.getElementById('bonus-save').onclick = function(){
+  var btn = this;
+  var next = {
+    title: document.getElementById('bonus-title-input').value.trim() || DEFAULT_BONUS.title,
+    btnText: document.getElementById('bonus-btn-input').value.trim() || DEFAULT_BONUS.btnText,
+    modalTitle: document.getElementById('bonus-modal-title-input').value.trim() || DEFAULT_BONUS.modalTitle,
+    modalText: document.getElementById('bonus-modal-text-input').value.trim() || DEFAULT_BONUS.modalText
+  };
+  btn.disabled = true;
+  saveBonusToApi(next).then(function(){
+    bonus = next;
+    renderBonus();
+    showToast('Бонус-блок сохранён ✓');
+  }).catch(function(e){
+    showToast('Ошибка сохранения: ' + e.message);
+  }).finally(function(){ btn.disabled = false; });
+};
+
+// Открытие/закрытие всплывающего окна бонуса (одноразовое, можно закрыть)
+document.getElementById('bonus-cta-btn').onclick = function(){
+  document.getElementById('bonus-modal-title').textContent = bonus.modalTitle;
+  document.getElementById('bonus-modal-text').textContent = bonus.modalText;
+  document.getElementById('bonus-modal').classList.add('open');
+  lockBody();
+};
+document.getElementById('bonus-modal-close').onclick = function(){
+  document.getElementById('bonus-modal').classList.remove('open');
+  unlockBody();
+};
+document.getElementById('bonus-modal').onclick = function(e){
+  if(e.target === this){ this.classList.remove('open'); unlockBody(); }
+};
+
 function cardChipsFromString(str){
   if(!str) return [];
   return str.split(',').map(function(s){ return s.trim(); }).filter(Boolean).map(function(name){
@@ -1986,6 +2352,10 @@ function openAdmin(){
     requisites = r;
     fillRequisitesForm();
   }).catch(function(){});
+  fetchBonusFromApi().then(function(b){
+    bonus = b;
+    fillBonusForm();
+  }).catch(function(){});
   refreshOrdersFromApi();
 }
 document.getElementById('admin-close').onclick = function(){
@@ -2010,12 +2380,16 @@ function switchTab(tab){
   document.getElementById('tab-new').style.display    = tab==='new'      ? '' : 'none';
   document.getElementById('tab-orders').style.display = tab==='orders'   ? '' : 'none';
   document.getElementById('tab-requisites').style.display = tab==='requisites' ? '' : 'none';
+  document.getElementById('tab-bonus').style.display = tab==='bonus' ? '' : 'none';
+  document.getElementById('tab-support').style.display = tab==='support' ? '' : 'none';
   document.getElementById('tab-settings').style.display = tab==='settings' ? '' : 'none';
   document.getElementById('tab-logs').style.display   = tab==='logs'     ? '' : 'none';
   if(tab === 'new') buildTierForm(document.getElementById('new-tier-form'), null);
   if(tab === 'tiers'){ editingId=null; document.getElementById('tier-editor-wrap').style.display='none'; }
   if(tab === 'orders') renderOrdersList();
   if(tab === 'requisites') fillRequisitesForm();
+  if(tab === 'bonus') fillBonusForm();
+  if(tab === 'support') refreshSupportTickets();
   if(tab === 'logs') refreshLogsFromApi();
 }
 
@@ -3104,6 +3478,323 @@ function refreshSubsCounter(){
 refreshSubsCounter();
 
 // ============================================================
+// SUPPORT CHAT — CLIENT WIDGET
+// ============================================================
+var SUPPORT_CLIENT_KEY = 'support_client_id_v1';
+var SUPPORT_TICKET_KEY = 'support_ticket_id_v1';
+
+function getOrCreateClientId(){
+  var id = localStorage.getItem(SUPPORT_CLIENT_KEY);
+  if(!id){
+    id = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
+    localStorage.setItem(SUPPORT_CLIENT_KEY, id);
+  }
+  return id;
+}
+
+var supportClientId = getOrCreateClientId();
+var supportTicketId = localStorage.getItem(SUPPORT_TICKET_KEY) || null;
+var supportPollTimer = null;
+var supportChatOpen = false;
+var supportLastMsgCount = 0;
+
+function formatMsgTime(iso){
+  try{
+    var d = new Date(iso);
+    return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  }catch(e){ return ''; }
+}
+
+function renderSupportMessages(messages){
+  var body = document.getElementById('support-chat-body');
+  if(!messages || !messages.length){
+    body.innerHTML = '<div class="support-chat-empty">Напишите нам, если возникли вопросы по оплате, доступу или что-то не работает — ответим здесь.</div>';
+    return;
+  }
+  var wasAtBottom = (body.scrollHeight - body.scrollTop - body.clientHeight) < 60;
+  body.innerHTML = messages.map(function(m){
+    var cls = m.sender === 'admin' ? 'admin' : 'client';
+    return '<div class="support-msg-row '+cls+'">'+
+      '<div class="support-msg-bubble">'+ esc(m.text) +'</div>'+
+      '<div class="support-msg-time">'+ (m.sender==='admin' ? 'Поддержка · ' : '') + formatMsgTime(m.created_at) +'</div>'+
+    '</div>';
+  }).join('');
+  if(wasAtBottom || supportLastMsgCount === 0){
+    body.scrollTop = body.scrollHeight;
+  }
+  supportLastMsgCount = messages.length;
+}
+
+function fetchSupportMessages(){
+  if(!supportTicketId) return;
+  apiFetch('/api/support/messages?ticketId='+ encodeURIComponent(supportTicketId) +'&clientId='+ encodeURIComponent(supportClientId))
+    .then(function(data){ renderSupportMessages(data.messages || []); })
+    .catch(function(){});
+}
+
+function startSupportPolling(){
+  stopSupportPolling();
+  supportPollTimer = setInterval(function(){
+    if(supportChatOpen) fetchSupportMessages();
+  }, 4000);
+}
+function stopSupportPolling(){
+  if(supportPollTimer){ clearInterval(supportPollTimer); supportPollTimer = null; }
+}
+
+function openSupportChat(){
+  supportChatOpen = true;
+  document.getElementById('support-chat-overlay').classList.add('open');
+  lockBody();
+  document.getElementById('support-badge').textContent = '';
+  if(supportTicketId){
+    fetchSupportMessages();
+  }
+  startSupportPolling();
+  setTimeout(function(){ document.getElementById('support-chat-input').focus(); }, 200);
+}
+function closeSupportChat(){
+  supportChatOpen = false;
+  document.getElementById('support-chat-overlay').classList.remove('open');
+  unlockBody();
+  stopSupportPolling();
+}
+
+document.getElementById('support-fab').onclick = openSupportChat;
+document.getElementById('support-chat-close').onclick = closeSupportChat;
+document.getElementById('support-chat-overlay').onclick = function(e){
+  if(e.target === this) closeSupportChat();
+};
+
+var supportInput = document.getElementById('support-chat-input');
+supportInput.addEventListener('input', function(){
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 110) + 'px';
+});
+supportInput.addEventListener('keydown', function(e){
+  if(e.key === 'Enter' && !e.shiftKey){
+    e.preventDefault();
+    sendSupportMessage();
+  }
+});
+document.getElementById('support-chat-send').onclick = sendSupportMessage;
+
+function sendSupportMessage(){
+  var input = document.getElementById('support-chat-input');
+  var text = input.value.trim();
+  if(!text) return;
+  var sendBtn = document.getElementById('support-chat-send');
+  sendBtn.disabled = true;
+  input.value = '';
+  input.style.height = 'auto';
+
+  apiFetch('/api/support/messages', {
+    method: 'POST',
+    body: JSON.stringify({ clientId: supportClientId, ticketId: supportTicketId, text: text })
+  }).then(function(data){
+    if(data.ticketId && data.ticketId !== supportTicketId){
+      supportTicketId = data.ticketId;
+      localStorage.setItem(SUPPORT_TICKET_KEY, supportTicketId);
+    }
+    fetchSupportMessages();
+  }).catch(function(e){
+    showToast('Не удалось отправить: ' + e.message);
+    input.value = text;
+  }).finally(function(){ sendBtn.disabled = false; });
+}
+
+// Проверяем есть ли уже тикет у этого клиента (например, вернулся с другой вкладки)
+if(supportTicketId){
+  fetchSupportMessages();
+}
+
+// Лёгкий фоновый поллинг непрочитанных, пока окно чата закрыто —
+// чтобы кружок показывал бейдж, если пришёл ответ поддержки
+function pollSupportUnreadBadge(){
+  if(supportChatOpen || !supportTicketId) return;
+  apiFetch('/api/support/ticket?clientId='+ encodeURIComponent(supportClientId)).then(function(data){
+    var t = data.ticket;
+    var badge = document.getElementById('support-badge');
+    if(t && t.unread_client > 0){
+      badge.textContent = t.unread_client > 9 ? '9+' : t.unread_client;
+    } else {
+      badge.textContent = '';
+    }
+  }).catch(function(){});
+}
+setInterval(pollSupportUnreadBadge, 15000);
+pollSupportUnreadBadge();
+
+// ============================================================
+// SUPPORT CHAT — ADMIN PANEL
+// ============================================================
+var supportTickets = [];
+var supportActiveTicketId = null;
+var supportAdminPollTimer = null;
+
+function fmtTicketTime(iso){
+  try{
+    var d = new Date(iso);
+    var now = new Date();
+    var sameDay = d.toDateString() === now.toDateString();
+    if(sameDay) return d.toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' });
+    return d.toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit' });
+  }catch(e){ return ''; }
+}
+
+function refreshSupportTickets(){
+  apiFetch('/api/admin/support/tickets').then(function(data){
+    supportTickets = data.tickets || [];
+    renderSupportTicketList();
+    updateSupportAdminBadge();
+  }).catch(function(e){
+    document.getElementById('admin-support-list').innerHTML =
+      '<div class="admin-support-empty-state">Ошибка загрузки: '+ esc(e.message) +'</div>';
+  });
+}
+
+function updateSupportAdminBadge(){
+  var totalUnread = supportTickets.reduce(function(sum, t){ return sum + (t.unread_admin || 0); }, 0);
+  var badge = document.getElementById('support-badge-admin');
+  if(totalUnread > 0){
+    badge.textContent = totalUnread;
+    badge.style.display = '';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function renderSupportTicketList(){
+  var list = document.getElementById('admin-support-list');
+  if(!supportTickets.length){
+    list.innerHTML = '<div class="admin-support-empty-state">Пока нет обращений</div>';
+    return;
+  }
+  list.innerHTML = supportTickets.map(function(t){
+    var active = t.id === supportActiveTicketId;
+    var preview = t.status === 'closed' ? 'закрыто' : (t.unread_admin > 0 ? 'новое сообщение' : 'открыт диалог');
+    return '<div class="admin-support-item'+(active?' active':'')+'" data-id="'+ t.id +'">'+
+      '<div class="admin-support-item-top">'+
+        '<span class="admin-support-item-num">Заявка #'+ t.ticket_number +'</span>'+
+        (t.unread_admin > 0 ? '<span class="admin-support-item-unread">'+ t.unread_admin +'</span>' : '<span class="admin-support-item-time">'+ fmtTicketTime(t.last_message_at) +'</span>')+
+      '</div>'+
+      '<div class="admin-support-item-preview">'+ esc(preview) +'</div>'+
+      '<span class="admin-support-item-status '+ t.status +'">'+ (t.status==='closed' ? 'закрыт' : 'открыт') +'</span>'+
+    '</div>';
+  }).join('');
+
+  list.querySelectorAll('.admin-support-item').forEach(function(item){
+    item.onclick = function(){
+      openSupportTicketAdmin(item.getAttribute('data-id'));
+    };
+  });
+}
+
+function openSupportTicketAdmin(ticketId){
+  supportActiveTicketId = ticketId;
+  renderSupportTicketList();
+  var ticket = supportTickets.find(function(t){ return t.id === ticketId; });
+  var chatWrap = document.getElementById('admin-support-chat');
+  chatWrap.innerHTML =
+    '<div class="admin-support-chat-header">'+
+      '<div><strong style="font-family:var(--font-display);font-size:13.5px">Заявка #'+ (ticket ? ticket.ticket_number : '') +'</strong></div>'+
+      '<button class="btn-sm '+ (ticket && ticket.status==='closed' ? '' : 'ghost') +'" id="support-toggle-status">'+ (ticket && ticket.status==='closed' ? 'Открыть снова' : 'Закрыть обращение') +'</button>'+
+    '</div>'+
+    '<div class="admin-support-chat-body" id="admin-support-chat-body"><div class="admin-support-empty-state">Загрузка…</div></div>'+
+    '<div class="admin-support-chat-footer">'+
+      '<textarea class="support-chat-input" id="admin-support-input" placeholder="Ответить пользователю…" rows="1" style="flex:1"></textarea>'+
+      '<button class="support-chat-send" id="admin-support-send" title="Отправить">'+
+        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>'+
+      '</button>'+
+    '</div>';
+
+  document.getElementById('support-toggle-status').onclick = function(){
+    var newStatus = (ticket && ticket.status === 'closed') ? 'open' : 'closed';
+    apiFetch('/api/admin/support/tickets/'+ ticketId, { method: 'PUT', body: JSON.stringify({ status: newStatus }) })
+      .then(function(){ refreshSupportTickets(); openSupportTicketAdmin(ticketId); })
+      .catch(function(e){ showToast('Ошибка: ' + e.message); });
+  };
+
+  var input = document.getElementById('admin-support-input');
+  input.addEventListener('input', function(){
+    this.style.height = 'auto';
+    this.style.height = Math.min(this.scrollHeight, 110) + 'px';
+  });
+  input.addEventListener('keydown', function(e){
+    if(e.key === 'Enter' && !e.shiftKey){
+      e.preventDefault();
+      sendSupportAdminReply(ticketId);
+    }
+  });
+  document.getElementById('admin-support-send').onclick = function(){ sendSupportAdminReply(ticketId); };
+
+  fetchSupportTicketMessagesAdmin(ticketId);
+}
+
+function fetchSupportTicketMessagesAdmin(ticketId){
+  apiFetch('/api/admin/support/tickets/'+ ticketId + '/messages').then(function(data){
+    var bodyEl = document.getElementById('admin-support-chat-body');
+    if(!bodyEl) return; // пользователь мог переключиться на другой тикет
+    var messages = data.messages || [];
+    if(!messages.length){
+      bodyEl.innerHTML = '<div class="admin-support-empty-state">Сообщений пока нет</div>';
+      return;
+    }
+    bodyEl.innerHTML = messages.map(function(m){
+      var cls = m.sender === 'admin' ? 'admin' : 'client';
+      var label = m.sender === 'admin' ? 'Поддержка' : 'Клиент';
+      return '<div class="support-msg-row '+cls+'">'+
+        '<div class="support-msg-bubble">'+ esc(m.text) +'</div>'+
+        '<div class="support-msg-time">'+ label +' · '+ formatMsgTime(m.created_at) +'</div>'+
+      '</div>';
+    }).join('');
+    bodyEl.scrollTop = bodyEl.scrollHeight;
+    // Обновляем счётчик непрочитанных в списке слева без полной перерисовки
+    var t = supportTickets.find(function(x){ return x.id === ticketId; });
+    if(t) t.unread_admin = 0;
+    updateSupportAdminBadge();
+  }).catch(function(){});
+}
+
+function sendSupportAdminReply(ticketId){
+  var input = document.getElementById('admin-support-input');
+  if(!input) return;
+  var text = input.value.trim();
+  if(!text) return;
+  var btn = document.getElementById('admin-support-send');
+  btn.disabled = true;
+  input.value = '';
+  input.style.height = 'auto';
+
+  apiFetch('/api/admin/support/tickets/'+ ticketId + '/messages', {
+    method: 'POST',
+    body: JSON.stringify({ text: text })
+  }).then(function(){
+    fetchSupportTicketMessagesAdmin(ticketId);
+    refreshSupportTickets();
+  }).catch(function(e){
+    showToast('Не удалось отправить: ' + e.message);
+    input.value = text;
+  }).finally(function(){ btn.disabled = false; });
+}
+
+// Поллинг списка тикетов и открытого диалога, пока открыта вкладка "Тех.поддержка" в админке
+function startSupportAdminPolling(){
+  stopSupportAdminPolling();
+  supportAdminPollTimer = setInterval(function(){
+    var adminModalOpen = document.getElementById('admin-modal').classList.contains('open');
+    var supportTabActive = document.getElementById('tab-support').style.display !== 'none';
+    if(!adminModalOpen || !supportTabActive) return;
+    refreshSupportTickets();
+    if(supportActiveTicketId) fetchSupportTicketMessagesAdmin(supportActiveTicketId);
+  }, 5000);
+}
+function stopSupportAdminPolling(){
+  if(supportAdminPollTimer){ clearInterval(supportAdminPollTimer); supportAdminPollTimer = null; }
+}
+startSupportAdminPolling();
+
+// ============================================================
 // BLACKOUT REVEAL
 // ============================================================
 var blackouts = document.querySelectorAll('.blackout');
@@ -3118,6 +3809,7 @@ setTimeout(function(){
 // INIT
 // ============================================================
 renderPublic(); // мгновенный рендер дефолтных тарифов, пока грузится API
+renderBonus(); // мгновенный рендер дефолтного бонус-блока, пока грузится API
 fetchTiersFromApi().then(function(apiTiers){
   if(apiTiers && apiTiers.length){
     tiers = apiTiers;
@@ -3126,108 +3818,13 @@ fetchTiersFromApi().then(function(apiTiers){
 }).catch(function(e){
   console.warn('Не удалось загрузить тарифы с API, используются локальные значения:', e);
 });
-refreshOrdersBadge();
-
-// ============================================================
-// BONUS BLOCK — заголовок/текст карточки и текст всплывающего окна
-// ============================================================
-var BONUS_STORAGE_KEY = 'tiers_bonus_v1';
-
-var DEFAULT_BONUS = {
-  title: 'Получить 5 гигабайт бесплатно!',
-  sub: 'Выполните простое условие и получите бонус',
-  btnText: 'Получить бонус',
-  modalTitle: 'Как получить бонус',
-  modalText: 'Напишите 10 комментариев в нашем тик токе, чтоб получить, и отправьте скрины в поддержку!'
-};
-
-function loadBonusLocal(){
-  try{
-    var raw = localStorage.getItem(BONUS_STORAGE_KEY);
-    if(raw) return Object.assign({}, DEFAULT_BONUS, JSON.parse(raw));
-  }catch(e){}
-  return JSON.parse(JSON.stringify(DEFAULT_BONUS));
-}
-function saveBonusLocal(b){
-  localStorage.setItem(BONUS_STORAGE_KEY, JSON.stringify(b));
-}
-function fetchBonusFromApi(){
-  return apiFetch('/api/bonus').then(function(data){
-    return Object.assign({}, DEFAULT_BONUS, data.bonus || {});
-  });
-}
-function saveBonusToApi(b){
-  return apiFetch('/api/admin/bonus', { method: 'PUT', body: JSON.stringify(b) });
-}
-
-var bonus = loadBonusLocal();
-
-function renderBonus(){
-  document.getElementById('bonus-title').textContent = bonus.title || DEFAULT_BONUS.title;
-  document.getElementById('bonus-sub').textContent = bonus.sub || DEFAULT_BONUS.sub;
-  document.getElementById('bonus-btn').textContent = bonus.btnText || DEFAULT_BONUS.btnText;
-  document.getElementById('bonus-modal-title').textContent = bonus.modalTitle || DEFAULT_BONUS.modalTitle;
-  document.getElementById('bonus-modal-text').textContent = bonus.modalText || DEFAULT_BONUS.modalText;
-}
-function fillBonusAdminForm(){
-  document.getElementById('bonus-title-input').value = bonus.title || '';
-  document.getElementById('bonus-sub-input').value = bonus.sub || '';
-  document.getElementById('bonus-btn-input').value = bonus.btnText || '';
-  document.getElementById('bonus-modal-title-input').value = bonus.modalTitle || '';
-  document.getElementById('bonus-modal-text-input').value = bonus.modalText || '';
-}
-
-renderBonus();
 fetchBonusFromApi().then(function(b){
   bonus = b;
   renderBonus();
-  fillBonusAdminForm();
 }).catch(function(e){
-  console.warn('Не удалось загрузить блок бонуса с API, используются локальные значения:', e);
-  fillBonusAdminForm();
+  console.warn('Не удалось загрузить бонус-блок с API, используются локальные значения:', e);
 });
-
-// Открытие/закрытие всплывающего окна (одноразовое, закрывается вручную)
-var bonusModal = document.getElementById('bonus-modal');
-document.getElementById('bonus-btn').addEventListener('click', function(){
-  bonusModal.classList.add('open');
-  document.body.classList.add('modal-open');
-});
-function closeBonusModal(){
-  bonusModal.classList.remove('open');
-  document.body.classList.remove('modal-open');
-}
-document.getElementById('bonus-modal-close').addEventListener('click', closeBonusModal);
-bonusModal.addEventListener('click', function(e){
-  if(e.target === bonusModal) closeBonusModal();
-});
-
-// Сохранение из админки
-var saveBonusBtn = document.getElementById('save-bonus');
-if(saveBonusBtn){
-  saveBonusBtn.addEventListener('click', function(){
-    var newBonus = {
-      title: document.getElementById('bonus-title-input').value.trim() || DEFAULT_BONUS.title,
-      sub: document.getElementById('bonus-sub-input').value.trim() || DEFAULT_BONUS.sub,
-      btnText: document.getElementById('bonus-btn-input').value.trim() || DEFAULT_BONUS.btnText,
-      modalTitle: document.getElementById('bonus-modal-title-input').value.trim() || DEFAULT_BONUS.modalTitle,
-      modalText: document.getElementById('bonus-modal-text-input').value.trim() || DEFAULT_BONUS.modalText
-    };
-    saveBonusBtn.disabled = true;
-    saveBonusBtn.textContent = 'Сохранение...';
-    saveBonusToApi(newBonus).then(function(){
-      bonus = newBonus;
-      saveBonusLocal(bonus);
-      renderBonus();
-      showToast('Блок бонуса сохранён');
-    }).catch(function(e){
-      showToast('Ошибка сохранения: ' + (e.message || e));
-    }).finally(function(){
-      saveBonusBtn.disabled = false;
-      saveBonusBtn.textContent = 'Сохранить блок бонуса';
-    });
-  });
-}
+refreshOrdersBadge();
 </script>
 </body>
 </html>
