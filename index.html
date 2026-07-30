@@ -148,39 +148,6 @@ h1{
 }
 .counter b{color:var(--red-bright); font-weight:700;}
 
-/* REVIEWS */
-.reviews{
-  margin:8px 24px 0;
-  border:1px solid var(--line);
-  border-radius:10px;
-  padding:20px;
-  display:flex;
-  align-items:center;
-  gap:16px;
-}
-.reviews .icon{
-  flex-shrink:0;
-  width:42px; height:42px;
-  border-radius:8px;
-  background:var(--red-dim);
-  display:flex; align-items:center; justify-content:center;
-  color:var(--red-bright);
-}
-.reviews .body{flex:1;}
-.reviews .body strong{display:block; font-size:14px; margin-bottom:3px;}
-.reviews .body span{font-size:12.5px; color:var(--text-dim); line-height:1.5;}
-.reviews a{
-  flex-shrink:0;
-  font-size:12px;
-  font-weight:600;
-  color:var(--red-bright);
-  text-decoration:none;
-  border-bottom:1px solid var(--red-dim);
-  padding-bottom:2px;
-  white-space:nowrap;
-}
-.reviews a:hover{border-color:var(--red-bright);}
-
 /* SECTION HEAD */
 .section-head{padding:48px 24px 22px;}
 .section-head h2{
@@ -1831,22 +1798,10 @@ input, textarea{
     <span class="mark">Клуб доступа</span>
     <h1>Контент, который <span class="blackout" data-word="не выкладывают">■■■■■■■■■■■■■■</span> в общий доступ</h1>
     <p class="sub">Несколько уровней подписки. Каждый следующий открывает больше, чем предыдущий.</p>
-    <a class="btn primary" href="#tiers">Смотреть уровни</a>
     <p class="counter">Активных подписок: <b id="subs-counter">240</b></p>
   </section>
 
-  <div class="reviews reveal in">
-    <div class="icon">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 5h16v11H8l-4 4V5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
-    </div>
-    <div class="body">
-      <strong>Отзывы и подтверждения</strong>
-      <span>Реальные скрины оплат от подписчиков</span>
-    </div>
-    <a href="#" target="_blank" rel="noopener">Открыть →</a>
-  </div>
-
-  <div class="section-head reveal in">
+  <div class="section-head reveal in" id="tiers">
     <h2>Уровни доступа</h2>
     <p>Выберите план — от базового ознакомления до полного доступа.</p>
   </div>
