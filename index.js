@@ -77,6 +77,9 @@ function isStr(v, maxLen = 500) {
   return typeof v === 'string' && v.length > 0 && v.length <= maxLen;
 }
 
+const UUID_RE_GLOBAL = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function isUuidLike(v) { return typeof v === 'string' && UUID_RE_GLOBAL.test(v); }
+
 function toNum(v, fallback = 0, min = 0, max = 1_000_000_000) {
   const n = Number(v);
   if (!Number.isFinite(n) || n < min || n > max) return fallback;
@@ -217,6 +220,14 @@ const ordersPerIpLimiter = rateLimit({
   message: { error: 'Слишком много заявок с вашего IP. Попробуйте через час.' },
 });
 
+const supportMsgLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Слишком много сообщений. Подождите немного.' },
+});
+
 let globalOrdersWindowStart = Date.now();
 let globalOrdersCount = 0;
 const GLOBAL_ORDERS_WINDOW_MS = 60 * 60 * 1000;
@@ -310,7 +321,7 @@ app.get('/api/requisites', ah(async (req, res) => {
   ok(res, { requisites: req_ });
 }));
 
-// GET /api/bonus — публичный блок "бонус" (заголовок/текст карточки + текст попапа)
+// GET /api/bonus — текст бонус-блока на публичной странице
 app.get('/api/bonus', ah(async (req, res) => {
   const { rows } = await pool.query("SELECT key, value FROM settings WHERE key LIKE 'bonus_%'");
   const bonus = {};
@@ -380,6 +391,84 @@ app.get('/api/subs-count', ah(async (req, res) => {
   const { rows } = await pool.query("SELECT value FROM settings WHERE key = 'subs_counter'");
   const n = rows[0] ? parseInt(rows[0].value, 10) : SUBS_COUNTER_BASE;
   ok(res, { count: Number.isFinite(n) && n >= SUBS_COUNTER_BASE ? n : SUBS_COUNTER_BASE });
+}));
+
+// ── ТЕХ.ПОДДЕРЖКА (ЧАТ) — ПУБЛИЧНЫЕ РОУТЫ ────────────────
+
+const CLIENT_ID_RE = /^[a-zA-Z0-9_-]{8,100}$/;
+function isClientId(v) { return typeof v === 'string' && CLIENT_ID_RE.test(v); }
+
+// GET /api/support/ticket?clientId=... — найти существующий тикет клиента (без создания)
+app.get('/api/support/ticket', ah(async (req, res) => {
+  const clientId = req.query.clientId;
+  if (!isClientId(clientId)) return err(res, 'Некорректный ID клиента');
+  const { rows } = await pool.query(
+    'SELECT id, ticket_number, status, created_at, unread_client FROM support_tickets WHERE client_id = $1 ORDER BY created_at DESC LIMIT 1',
+    [clientId]
+  );
+  ok(res, { ticket: rows[0] || null });
+}));
+
+// GET /api/support/messages?ticketId=...&clientId=... — сообщения тикета (для клиента)
+app.get('/api/support/messages', ah(async (req, res) => {
+  const { ticketId, clientId } = req.query;
+  if (!isUuidLike(ticketId) || !isClientId(clientId)) return err(res, 'Некорректные параметры');
+  const { rows: tRows } = await pool.query('SELECT id FROM support_tickets WHERE id = $1 AND client_id = $2', [ticketId, clientId]);
+  if (!tRows[0]) return err(res, 'Тикет не найден', 404);
+  const { rows } = await pool.query(
+    'SELECT id, sender, text, created_at FROM support_messages WHERE ticket_id = $1 ORDER BY created_at ASC LIMIT 500',
+    [ticketId]
+  );
+  // Сбрасываем счётчик непрочитанных для клиента
+  await pool.query('UPDATE support_tickets SET unread_client = 0 WHERE id = $1', [ticketId]);
+  ok(res, { messages: rows });
+}));
+
+// POST /api/support/messages — отправить сообщение от клиента (создаёт тикет при необходимости)
+app.post('/api/support/messages', supportMsgLimiter, ah(async (req, res) => {
+  const body = bodyOf(req);
+  const { clientId, ticketId, text } = body;
+  if (!isClientId(clientId)) return err(res, 'Некорректный ID клиента');
+  if (!isStr(text, 3000)) return err(res, 'Сообщение пустое или слишком длинное');
+
+  let finalTicketId = ticketId;
+  let isNewTicket = false;
+
+  if (finalTicketId) {
+    const { rows } = await pool.query('SELECT id FROM support_tickets WHERE id = $1 AND client_id = $2', [finalTicketId, clientId]);
+    if (!rows[0]) finalTicketId = null;
+  }
+
+  const now = new Date().toISOString();
+
+  if (!finalTicketId) {
+    finalTicketId = crypto.randomUUID();
+    isNewTicket = true;
+    await pool.query(
+      `INSERT INTO support_tickets (id, client_id, status, created_at, last_message_at, unread_admin, unread_client)
+       VALUES ($1,$2,'open',$3,$3,1,0)`,
+      [finalTicketId, clientId, now]
+    );
+  } else {
+    await pool.query(
+      `UPDATE support_tickets SET last_message_at = $1, unread_admin = unread_admin + 1, status = 'open' WHERE id = $2`,
+      [now, finalTicketId]
+    );
+  }
+
+  const msgId = crypto.randomUUID();
+  await pool.query(
+    `INSERT INTO support_messages (id, ticket_id, sender, text, created_at) VALUES ($1,$2,'client',$3,$4)`,
+    [msgId, finalTicketId, text, now]
+  );
+
+  if (isNewTicket) {
+    const { rows: numRows } = await pool.query('SELECT ticket_number FROM support_tickets WHERE id = $1', [finalTicketId]);
+    const ip = getClientIp(req);
+    sendTelegram(`<b>🆘 Новое обращение в поддержку #${numRows[0]?.ticket_number ?? '?'}</b>\n🌐 IP: <code>${ip}</code>\n💬 ${String(text).slice(0, 300)}`);
+  }
+
+  ok(res, { ticketId: finalTicketId, messageId: msgId });
 }));
 
 // ── ADMIN AUTH ───────────────────────────────────────────
@@ -465,6 +554,61 @@ app.put('/api/admin/orders/:id', requireAdmin, ah(async (req, res) => {
 app.delete('/api/admin/orders/:id', requireAdmin, ah(async (req, res) => {
   if (!isUuid(req.params.id)) return err(res, 'Не найдено', 404);
   await pool.query('DELETE FROM orders WHERE id = $1', [req.params.id]);
+  ok(res);
+}));
+
+// ── ТЕХ.ПОДДЕРЖКА (ЧАТ) — АДМИНСКИЕ РОУТЫ ────────────────
+
+// GET /api/admin/support/tickets — список всех тикетов, новые сверху
+app.get('/api/admin/support/tickets', requireAdmin, ah(async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT id, ticket_number, client_id, status, created_at, last_message_at, unread_admin
+     FROM support_tickets ORDER BY last_message_at DESC LIMIT 300`
+  );
+  ok(res, { tickets: rows });
+}));
+
+// GET /api/admin/support/tickets/:id/messages
+app.get('/api/admin/support/tickets/:id/messages', requireAdmin, ah(async (req, res) => {
+  if (!isUuid(req.params.id)) return err(res, 'Не найдено', 404);
+  const { rows: tRows } = await pool.query('SELECT id FROM support_tickets WHERE id = $1', [req.params.id]);
+  if (!tRows[0]) return err(res, 'Тикет не найден', 404);
+  const { rows } = await pool.query(
+    'SELECT id, sender, text, created_at FROM support_messages WHERE ticket_id = $1 ORDER BY created_at ASC LIMIT 500',
+    [req.params.id]
+  );
+  await pool.query('UPDATE support_tickets SET unread_admin = 0 WHERE id = $1', [req.params.id]);
+  ok(res, { messages: rows });
+}));
+
+// POST /api/admin/support/tickets/:id/messages — ответ от лица поддержки
+app.post('/api/admin/support/tickets/:id/messages', requireAdmin, ah(async (req, res) => {
+  if (!isUuid(req.params.id)) return err(res, 'Не найдено', 404);
+  const { text } = bodyOf(req);
+  if (!isStr(text, 3000)) return err(res, 'Сообщение пустое или слишком длинное');
+
+  const { rows: tRows } = await pool.query('SELECT id FROM support_tickets WHERE id = $1', [req.params.id]);
+  if (!tRows[0]) return err(res, 'Тикет не найден', 404);
+
+  const now = new Date().toISOString();
+  const msgId = crypto.randomUUID();
+  await pool.query(
+    `INSERT INTO support_messages (id, ticket_id, sender, text, created_at) VALUES ($1,$2,'admin',$3,$4)`,
+    [msgId, req.params.id, text, now]
+  );
+  await pool.query(
+    `UPDATE support_tickets SET last_message_at = $1, unread_client = unread_client + 1 WHERE id = $2`,
+    [now, req.params.id]
+  );
+  ok(res, { messageId: msgId });
+}));
+
+// PUT /api/admin/support/tickets/:id — изменить статус (open/closed)
+app.put('/api/admin/support/tickets/:id', requireAdmin, ah(async (req, res) => {
+  if (!isUuid(req.params.id)) return err(res, 'Не найдено', 404);
+  const { status } = bodyOf(req);
+  if (!['open', 'closed'].includes(status)) return err(res, 'Неверный статус');
+  await pool.query('UPDATE support_tickets SET status = $1 WHERE id = $2', [status, req.params.id]);
   ok(res);
 }));
 
@@ -571,9 +715,16 @@ app.put('/api/admin/requisites', requireAdmin, ah(async (req, res) => {
   ok(res);
 }));
 
+app.get('/api/admin/bonus', requireAdmin, ah(async (req, res) => {
+  const { rows } = await pool.query("SELECT key, value FROM settings WHERE key LIKE 'bonus_%'");
+  const bonus = {};
+  rows.forEach(r => { bonus[r.key.replace('bonus_', '')] = r.value; });
+  ok(res, { bonus });
+}));
+
 app.put('/api/admin/bonus', requireAdmin, ah(async (req, res) => {
   const body = bodyOf(req);
-  const allowed = ['title', 'sub', 'btnText', 'modalTitle', 'modalText'];
+  const allowed = ['title', 'btnText', 'modalTitle', 'modalText'];
   for (const key of allowed) {
     if (body[key] !== undefined && isStr(String(body[key]), 2000)) {
       await pool.query(
@@ -740,6 +891,33 @@ async function runMigrations() {
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_site_logs_event  ON site_logs(event_type)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_site_logs_ip     ON site_logs(ip)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_site_logs_created ON site_logs(created_at DESC)`);
+
+  // Таблицы тех.поддержки (чат)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS support_tickets (
+      id              TEXT PRIMARY KEY,
+      ticket_number   SERIAL,
+      client_id       TEXT NOT NULL,
+      status          TEXT NOT NULL DEFAULT 'open',
+      created_at      TEXT NOT NULL,
+      last_message_at TEXT NOT NULL,
+      unread_admin    INTEGER NOT NULL DEFAULT 0,
+      unread_client   INTEGER NOT NULL DEFAULT 0
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_support_tickets_client ON support_tickets(client_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_support_tickets_last   ON support_tickets(last_message_at DESC)`);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS support_messages (
+      id          TEXT PRIMARY KEY,
+      ticket_id   TEXT NOT NULL REFERENCES support_tickets(id) ON DELETE CASCADE,
+      sender      TEXT NOT NULL,
+      text        TEXT NOT NULL,
+      created_at  TEXT NOT NULL
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_support_messages_ticket ON support_messages(ticket_id, created_at)`);
 
   // Добавляем колонки IP и UserAgent к orders если нет (для старых БД)
   await pool.query(`
