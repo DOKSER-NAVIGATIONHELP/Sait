@@ -1053,6 +1053,23 @@ footer{
 .logs-page-btn:disabled{opacity:.4;cursor:default;}
 .logs-page-info{color:var(--text-dim);font-size:12px;}
 
+/* ADMIN BUTTON */
+.admin-trigger{
+  position:fixed;
+  bottom:20px;
+  right:20px;
+  width:42px; height:42px;
+  border-radius:50%;
+  background:var(--panel);
+  border:1px solid var(--line);
+  color:var(--text-dim);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer;
+  z-index:100;
+  transition:border-color .2s, color .2s;
+}
+.admin-trigger:hover{border-color:var(--red); color:var(--red-bright);}
+
 /* MODAL OVERLAY */
 .modal-overlay{
   display:none;
@@ -1385,6 +1402,140 @@ footer{
 </div>
 
 
+<!-- Admin trigger -->
+<button class="admin-trigger" id="admin-trigger" title="Управление тарифами">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+</button>
+
+<!-- Login modal -->
+<div class="modal-overlay" id="login-modal">
+  <div class="modal">
+    <div class="modal-title">Вход в админку</div>
+    <button class="modal-close" id="login-close">✕</button>
+    <div class="login-form">
+      <div class="field">
+        <label>Пароль</label>
+        <input type="password" id="login-password" placeholder="Введите пароль" autocomplete="current-password">
+        <div class="err" id="login-err" style="display:none">Неверный пароль</div>
+      </div>
+      <button class="btn-sm red" id="login-submit" style="width:100%">Войти</button>
+    </div>
+  </div>
+</div>
+
+<!-- Admin panel modal -->
+<div class="modal-overlay" id="admin-modal">
+  <div class="modal" style="margin:16px auto; max-height:none; overflow:visible;">
+    <div class="modal-title">Управление тарифами <span style="font-size:11px;color:var(--text-dim);font-family:var(--font-body);font-weight:400">— Редактор</span></div>
+    <button class="modal-close" id="admin-close">✕</button>
+
+    <div class="admin-tabs">
+      <button class="admin-tab active" data-tab="tiers">Тарифы</button>
+      <button class="admin-tab" data-tab="new">+ Новый тариф</button>
+      <button class="admin-tab" data-tab="orders">Заявки<span class="badge-count" id="orders-badge" style="display:none">0</span></button>
+      <button class="admin-tab" data-tab="requisites">Реквизиты</button>
+      <button class="admin-tab" data-tab="settings">Настройки</button>
+      <button class="admin-tab" data-tab="logs">📋 Логи<span class="badge-count" id="logs-badge" style="display:none">0</span></button>
+    </div>
+
+    <!-- TAB: TIERS LIST -->
+    <div id="tab-tiers">
+      <div class="admin-tier-list" id="admin-tier-list"></div>
+      <div id="tier-editor-wrap" style="display:none">
+        <div class="divider" style="margin-bottom:16px"></div>
+        <div class="section-label" style="margin-bottom:12px">Редактировать тариф</div>
+        <div id="tier-editor-form" class="tier-editor"></div>
+        <div class="row-btns" style="margin-top:14px">
+          <button class="btn-sm ghost" id="editor-cancel">Отмена</button>
+          <button class="btn-sm red" id="editor-save">Сохранить</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: NEW TIER -->
+    <div id="tab-new" style="display:none">
+      <div id="new-tier-form" class="tier-editor"></div>
+      <div class="row-btns" style="margin-top:14px">
+        <button class="btn-sm red" id="new-tier-save">Создать тариф</button>
+      </div>
+    </div>
+
+    <!-- TAB: ORDERS -->
+    <div id="tab-orders" style="display:none">
+      <div id="orders-list"></div>
+    </div>
+
+    <!-- TAB: REQUISITES -->
+    <div id="tab-requisites" style="display:none">
+      <div class="tier-editor">
+
+        <div class="section-label">🇷🇺 Рубли — Ozon Банк</div>
+        <div class="field"><label>Название банка</label><input type="text" id="req-rubBank" placeholder="Ozon Банк"></div>
+        <div class="field"><label>Номер карты</label><input type="text" id="req-rubCard" placeholder="2204321166536060"></div>
+        <div class="field"><label>С каких карт можно переводить (через запятую)</label><textarea id="req-rubCardsAccepted" placeholder="Сбербанк, Тинькофф, ВТБ..."></textarea></div>
+
+        <div class="divider"></div>
+        <div class="section-label">🇺🇦 Гривны — Monobank</div>
+        <div class="field"><label>Название банка</label><input type="text" id="req-uahBank" placeholder="Monobank"></div>
+        <div class="field"><label>Номер карты</label><input type="text" id="req-uahCard" placeholder="4441114432886206"></div>
+        <div class="field"><label>С каких карт можно переводить (через запятую)</label><textarea id="req-uahCardsAccepted" placeholder="Monobank, ПриватБанк..."></textarea></div>
+
+        <div class="divider"></div>
+        <div class="section-label">💎 Криптовалюта</div>
+        <div class="field"><label>TON адрес кошелька</label><input type="text" id="req-tonAddress" placeholder="UQ..."></div>
+        <div class="field"><label>USDT TRC-20 адрес</label><input type="text" id="req-trcAddress" placeholder="T..."></div>
+
+        <div class="divider"></div>
+        <div class="section-label">⭐ Telegram Stars</div>
+        <div class="field"><label>Текст-подсказка для оплаты звёздами</label><textarea id="req-starsNote" placeholder="Напишите нам в Telegram..."></textarea></div>
+
+        <div class="row-btns" style="margin-top:14px">
+          <button class="btn-sm red" id="req-save">Сохранить реквизиты</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: LOGS -->
+    <div id="tab-logs" style="display:none">
+      <div class="logs-toolbar">
+        <select id="logs-filter-type" class="logs-select">
+          <option value="all">Все события</option>
+          <option value="request">Посещения</option>
+          <option value="order_submit">Заявки</option>
+          <option value="admin_login_ok">Входы в админку</option>
+          <option value="admin_login_fail">Неверный пароль</option>
+        </select>
+        <button class="btn-sm" id="logs-refresh-btn">↻ Обновить</button>
+        <button class="btn-sm danger" id="logs-clear-btn">🗑 Очистить</button>
+      </div>
+      <div id="logs-stats-bar"></div>
+      <div id="logs-list"><div class="order-empty">Загрузка логов…</div></div>
+      <div id="logs-pagination" style="display:flex;gap:10px;align-items:center;margin-top:12px;justify-content:center;"></div>
+    </div>
+
+    <!-- TAB: SETTINGS -->
+    <div id="tab-settings" style="display:none">
+      <div class="tier-editor">
+        <div class="field">
+          <label>Изменить пароль администратора</label>
+          <input type="password" id="current-password" placeholder="Текущий пароль" autocomplete="current-password">
+        </div>
+        <div class="field">
+          <input type="password" id="new-password" placeholder="Новый пароль" autocomplete="new-password">
+        </div>
+        <div class="field">
+          <input type="password" id="new-password-confirm" placeholder="Повторите пароль">
+          <div class="err" id="pw-err" style="display:none"></div>
+        </div>
+        <div class="row-btns">
+          <button class="btn-sm red" id="save-password">Сменить пароль</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
@@ -1624,6 +1775,365 @@ function unlockBody(){
   if(!anyOpen) document.body.classList.remove('modal-open');
 }
 
+document.getElementById('admin-trigger').onclick = function(){
+  document.getElementById('login-modal').classList.add('open');
+  lockBody();
+  document.getElementById('login-password').value = '';
+  document.getElementById('login-err').style.display = 'none';
+  setTimeout(function(){ document.getElementById('login-password').focus(); }, 100);
+};
+document.getElementById('login-close').onclick = function(){
+  document.getElementById('login-modal').classList.remove('open');
+  unlockBody();
+};
+document.getElementById('login-modal').onclick = function(e){
+  if(e.target === this){ this.classList.remove('open'); unlockBody(); }
+};
+document.getElementById('login-submit').onclick = doLogin;
+document.getElementById('login-password').onkeydown = function(e){
+  if(e.key === 'Enter') doLogin();
+};
+function doLogin(){
+  var val = document.getElementById('login-password').value;
+  var submitBtn = document.getElementById('login-submit');
+  var errBox = document.getElementById('login-err');
+  errBox.style.display = 'none';
+  submitBtn.disabled = true;
+  apiFetch('/api/admin/login', { method: 'POST', body: JSON.stringify({ password: val }) })
+    .then(function(data){
+      adminToken = data.token;
+      document.getElementById('login-modal').classList.remove('open');
+      openAdmin();
+    })
+    .catch(function(){
+      errBox.textContent = 'Неверный пароль';
+      errBox.style.display = 'block';
+    })
+    .finally(function(){ submitBtn.disabled = false; });
+}
+
+// ============================================================
+// ADMIN MODAL
+// ============================================================
+function openAdmin(){
+  document.getElementById('admin-modal').classList.add('open');
+  lockBody();
+  switchTab('tiers');
+  // Подтягиваем актуальные данные с сервера
+  fetchTiersFromApi().then(function(apiTiers){
+    tiers = apiTiers;
+    renderAdminList();
+    fillRequisitesForm();
+  }).catch(function(e){ showToast('Не удалось загрузить тарифы: ' + e.message); });
+  fetchRequisitesFromApi().then(function(r){
+    requisites = r;
+    fillRequisitesForm();
+  }).catch(function(){});
+  refreshOrdersFromApi();
+}
+document.getElementById('admin-close').onclick = function(){
+  document.getElementById('admin-modal').classList.remove('open');
+  unlockBody();
+};
+document.getElementById('admin-modal').onclick = function(e){
+  if(e.target === this){ this.classList.remove('open'); unlockBody(); }
+};
+
+// TABS
+document.querySelectorAll('.admin-tab').forEach(function(btn){
+  btn.onclick = function(){
+    switchTab(btn.getAttribute('data-tab'));
+  };
+});
+function switchTab(tab){
+  document.querySelectorAll('.admin-tab').forEach(function(b){
+    b.classList.toggle('active', b.getAttribute('data-tab') === tab);
+  });
+  document.getElementById('tab-tiers').style.display  = tab==='tiers'    ? '' : 'none';
+  document.getElementById('tab-new').style.display    = tab==='new'      ? '' : 'none';
+  document.getElementById('tab-orders').style.display = tab==='orders'   ? '' : 'none';
+  document.getElementById('tab-requisites').style.display = tab==='requisites' ? '' : 'none';
+  document.getElementById('tab-settings').style.display = tab==='settings' ? '' : 'none';
+  document.getElementById('tab-logs').style.display   = tab==='logs'     ? '' : 'none';
+  if(tab === 'new') buildTierForm(document.getElementById('new-tier-form'), null);
+  if(tab === 'tiers'){ editingId=null; document.getElementById('tier-editor-wrap').style.display='none'; }
+  if(tab === 'orders') renderOrdersList();
+  if(tab === 'requisites') fillRequisitesForm();
+  if(tab === 'logs') refreshLogsFromApi();
+}
+
+// ============================================================
+// REQUISITES ADMIN FORM
+// ============================================================
+function fillRequisitesForm(){
+  var r = requisites;
+  document.getElementById('req-rubBank').value = r.rubBank;
+  document.getElementById('req-rubCard').value = r.rubCard;
+  document.getElementById('req-rubCardsAccepted').value = r.rubCardsAccepted;
+  document.getElementById('req-uahBank').value = r.uahBank;
+  document.getElementById('req-uahCard').value = r.uahCard;
+  document.getElementById('req-uahCardsAccepted').value = r.uahCardsAccepted;
+  document.getElementById('req-tonAddress').value = r.tonAddress;
+  document.getElementById('req-trcAddress').value = r.trcAddress;
+  document.getElementById('req-starsNote').value = r.starsNote;
+}
+
+document.getElementById('req-save').onclick = function(){
+  var btn = this;
+  var next = {
+    rubBank: document.getElementById('req-rubBank').value.trim() || DEFAULT_REQUISITES.rubBank,
+    rubCard: document.getElementById('req-rubCard').value.trim().replace(/\s+/g,''),
+    rubCardsAccepted: document.getElementById('req-rubCardsAccepted').value.trim(),
+    uahBank: document.getElementById('req-uahBank').value.trim() || DEFAULT_REQUISITES.uahBank,
+    uahCard: document.getElementById('req-uahCard').value.trim().replace(/\s+/g,''),
+    uahCardsAccepted: document.getElementById('req-uahCardsAccepted').value.trim(),
+    tonAddress: document.getElementById('req-tonAddress').value.trim(),
+    trcAddress: document.getElementById('req-trcAddress').value.trim(),
+    starsNote: document.getElementById('req-starsNote').value.trim() || DEFAULT_REQUISITES.starsNote
+  };
+  btn.disabled = true;
+  saveRequisitesToApi(next).then(function(){
+    requisites = next;
+    showToast('Реквизиты сохранены ✓');
+  }).catch(function(e){
+    showToast('Ошибка сохранения: ' + e.message);
+  }).finally(function(){ btn.disabled = false; });
+};
+
+// ============================================================
+// ADMIN LIST
+// ============================================================
+function renderAdminList(){
+  var list = document.getElementById('admin-tier-list');
+  list.innerHTML = '';
+  tiers.forEach(function(t, idx){
+    var item = document.createElement('div');
+    item.className = 'admin-tier-item' + (editingId===t.id ? ' selected' : '');
+    item.innerHTML =
+      '<div class="admin-tier-item-info">'+
+        '<div class="admin-tier-item-name">'+ esc(t.name) + (t.highlight ? ' <span class="badge-hl">топ</span>' : '') +'</div>'+
+        '<div class="admin-tier-item-price">₽'+ num(t.priceRub) +' · $'+ (t.priceUsdt||0) +' · ₴'+ (t.priceUah||0) +' · ⭐'+( t.priceStars||0)+'</div>'+
+      '</div>'+
+      '<div class="admin-tier-item-actions">'+
+        '<button class="icon-btn move" data-move="-1" data-idx="'+idx+'" title="Вверх">↑</button>'+
+        '<button class="icon-btn move" data-move="1"  data-idx="'+idx+'" title="Вниз">↓</button>'+
+        '<button class="icon-btn" data-edit="'+t.id+'" title="Редактировать">✎</button>'+
+        '<button class="icon-btn danger" data-del="'+t.id+'" title="Удалить">✕</button>'+
+      '</div>';
+    list.appendChild(item);
+  });
+
+  list.querySelectorAll('[data-del]').forEach(function(btn){
+    btn.onclick = function(e){ e.stopPropagation(); deleteTier(btn.getAttribute('data-del')); };
+  });
+  list.querySelectorAll('[data-edit]').forEach(function(btn){
+    btn.onclick = function(e){ e.stopPropagation(); startEdit(btn.getAttribute('data-edit')); };
+  });
+  list.querySelectorAll('[data-move]').forEach(function(btn){
+    btn.onclick = function(e){
+      e.stopPropagation();
+      var idx = parseInt(btn.getAttribute('data-idx'));
+      var dir = parseInt(btn.getAttribute('data-move'));
+      moveTier(idx, dir);
+    };
+  });
+}
+
+function deleteTier(id){
+  if(!confirm('Удалить тариф?')) return;
+  apiFetch('/api/admin/tiers/' + id, { method: 'DELETE' }).then(function(){
+    tiers = tiers.filter(function(t){ return t.id !== id; });
+    renderPublic();
+    renderAdminList();
+    if(editingId === id){
+      editingId = null;
+      document.getElementById('tier-editor-wrap').style.display = 'none';
+    }
+    showToast('Тариф удалён');
+  }).catch(function(e){ showToast('Ошибка удаления: ' + e.message); });
+}
+
+function moveTier(idx, dir){
+  var newIdx = idx + dir;
+  if(newIdx < 0 || newIdx >= tiers.length) return;
+  var id = tiers[idx].id;
+  var direction = dir < 0 ? 'up' : 'down';
+  apiFetch('/api/admin/tiers/' + id + '/move', { method: 'PUT', body: JSON.stringify({ direction: direction }) })
+    .then(function(){ return fetchTiersFromApi(); })
+    .then(function(apiTiers){
+      tiers = apiTiers;
+      renderPublic();
+      renderAdminList();
+    }).catch(function(e){ showToast('Ошибка: ' + e.message); });
+}
+
+// ============================================================
+// TIER FORM BUILDER
+// ============================================================
+function buildTierForm(container, tier){
+  var t = tier || { id:'', name:'', flag:'', highlight:false, priceRub:0, priceUsdt:0, priceUah:0, priceStars:0, period:'/ месяц', desc:'', features:[''], ctaText:'Оформить', ctaLink:'#' };
+  container.innerHTML = '';
+
+  function field(label, id, val, placeholder, type){
+    return '<div class="field"><label>'+label+'</label><input type="'+(type||'text')+'" id="'+id+'" value="'+esc(val||'')+'" placeholder="'+(placeholder||'')+'"></div>';
+  }
+
+  container.innerHTML +=
+    field('Название', 'f-name', t.name, 'Базовый') +
+    field('Пометка (под названием)', 'f-flag', t.flag, 'старт / чаще выбирают / максимум') +
+    '<div class="divider"></div>'+
+    '<div class="section-label">Цены</div>'+
+    '<div class="price-grid">'+
+      field('Рубли (₽)', 'f-rub', t.priceRub, '990', 'number') +
+      field('USDT ($)', 'f-usdt', t.priceUsdt, '11', 'number') +
+      field('Гривны (₴)', 'f-uah', t.priceUah, '450', 'number') +
+      field('Telegram ⭐', 'f-stars', t.priceStars, '250', 'number') +
+    '</div>'+
+    field('Период', 'f-period', t.period, '/ месяц')+
+    '<div class="divider"></div>'+
+    '<div class="section-label">Описание</div>'+
+    '<div class="field"><textarea id="f-desc" placeholder="Пара строк о тарифе...">'+ esc(t.desc) +'</textarea></div>'+
+    '<div class="divider"></div>'+
+    '<div class="section-label">Возможности</div>'+
+    '<div class="features-list" id="f-features-list"></div>'+
+    '<button class="add-feature-btn" id="f-add-feature">+ Добавить пункт</button>'+
+    '<div class="divider"></div>'+
+    '<div class="section-label">Кнопка</div>'+
+    field('Текст кнопки', 'f-cta-text', t.ctaText, 'Оформить') +
+    field('Ссылка кнопки', 'f-cta-link', t.ctaLink, 'https://...') +
+    '<div class="divider"></div>'+
+    '<div class="checkbox-row"><input type="checkbox" id="f-highlight" '+(t.highlight?'checked':'')+'><label for="f-highlight">Выделить как рекомендуемый</label></div>';
+
+  // features
+  var feats = t.features.length ? t.features : [''];
+  var fList = container.querySelector('#f-features-list');
+  feats.forEach(function(f){ addFeatureRow(fList, f); });
+
+  container.querySelector('#f-add-feature').onclick = function(){
+    addFeatureRow(fList, '');
+  };
+}
+
+function addFeatureRow(container, val){
+  var row = document.createElement('div');
+  row.className = 'feature-row';
+  row.innerHTML = '<input type="text" value="'+ esc(val) +'" placeholder="Пункт возможностей"><button class="icon-btn danger" title="Удалить">✕</button>';
+  row.querySelector('.icon-btn').onclick = function(){ container.removeChild(row); };
+  container.appendChild(row);
+}
+
+function collectTierForm(container, id){
+  var features = [];
+  container.querySelectorAll('#f-features-list .feature-row input').forEach(function(inp){
+    if(inp.value.trim()) features.push(inp.value.trim());
+  });
+  return {
+    id: id || uid(),
+    name:       container.querySelector('#f-name').value.trim(),
+    flag:       container.querySelector('#f-flag').value.trim(),
+    highlight:  container.querySelector('#f-highlight').checked,
+    priceRub:   parseFloat(container.querySelector('#f-rub').value)||0,
+    priceUsdt:  parseFloat(container.querySelector('#f-usdt').value)||0,
+    priceUah:   parseFloat(container.querySelector('#f-uah').value)||0,
+    priceStars: parseFloat(container.querySelector('#f-stars').value)||0,
+    period:     container.querySelector('#f-period').value.trim() || '/ месяц',
+    desc:       container.querySelector('#f-desc').value.trim(),
+    features:   features.length ? features : [''],
+    ctaText:    container.querySelector('#f-cta-text').value.trim() || 'Оформить',
+    ctaLink:    container.querySelector('#f-cta-link').value.trim() || '#'
+  };
+}
+
+// ============================================================
+// EDIT EXISTING
+// ============================================================
+function startEdit(id){
+  editingId = id;
+  var t = tiers.find(function(x){ return x.id===id; });
+  if(!t) return;
+  var wrap = document.getElementById('tier-editor-wrap');
+  var form = document.getElementById('tier-editor-form');
+  buildTierForm(form, t);
+  wrap.style.display = '';
+  renderAdminList();
+  wrap.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+document.getElementById('editor-cancel').onclick = function(){
+  editingId = null;
+  document.getElementById('tier-editor-wrap').style.display = 'none';
+  renderAdminList();
+};
+
+document.getElementById('editor-save').onclick = function(){
+  if(!editingId) return;
+  var form = document.getElementById('tier-editor-form');
+  var updated = collectTierForm(form, editingId);
+  var body = {
+    name: updated.name, flag: updated.flag, highlight: updated.highlight,
+    priceRub: updated.priceRub, priceUsdt: updated.priceUsdt,
+    priceUah: updated.priceUah, priceStars: updated.priceStars,
+    period: updated.period, description: updated.desc,
+    features: updated.features, ctaText: updated.ctaText
+  };
+  apiFetch('/api/admin/tiers/' + editingId, { method: 'PUT', body: JSON.stringify(body) })
+    .then(function(){
+      tiers = tiers.map(function(t){ return t.id===editingId ? updated : t; });
+      renderPublic();
+      editingId = null;
+      document.getElementById('tier-editor-wrap').style.display = 'none';
+      renderAdminList();
+      showToast('Тариф сохранён ✓');
+    }).catch(function(e){ showToast('Ошибка сохранения: ' + e.message); });
+};
+
+// ============================================================
+// NEW TIER
+// ============================================================
+document.getElementById('new-tier-save').onclick = function(){
+  var form = document.getElementById('new-tier-form');
+  var t = collectTierForm(form, null);
+  if(!t.name){ alert('Введите название'); return; }
+  var body = {
+    name: t.name, flag: t.flag, highlight: t.highlight,
+    priceRub: t.priceRub, priceUsdt: t.priceUsdt,
+    priceUah: t.priceUah, priceStars: t.priceStars,
+    period: t.period, description: t.desc,
+    features: t.features, ctaText: t.ctaText
+  };
+  apiFetch('/api/admin/tiers', { method: 'POST', body: JSON.stringify(body) })
+    .then(function(data){
+      t.id = data.id;
+      tiers.push(t);
+      renderPublic();
+      renderAdminList();
+      switchTab('tiers');
+      showToast('Тариф создан ✓');
+    }).catch(function(e){ showToast('Ошибка создания: ' + e.message); });
+};
+
+// ============================================================
+// SETTINGS — CHANGE PASSWORD
+// ============================================================
+document.getElementById('save-password').onclick = function(){
+  var cur = document.getElementById('current-password').value;
+  var p1 = document.getElementById('new-password').value;
+  var p2 = document.getElementById('new-password-confirm').value;
+  var err = document.getElementById('pw-err');
+  if(!p1 || p1.length < 8){ err.textContent='Минимум 8 символов'; err.style.display='block'; return; }
+  if(p1 !== p2){ err.textContent='Пароли не совпадают'; err.style.display='block'; return; }
+  err.style.display='none';
+  apiFetch('/api/admin/password', { method: 'PUT', body: JSON.stringify({ currentPassword: cur, newPassword: p1 }) })
+    .then(function(){
+      document.getElementById('current-password').value='';
+      document.getElementById('new-password').value='';
+      document.getElementById('new-password-confirm').value='';
+      showToast('Пароль изменён ✓');
+    }).catch(function(e){
+      err.textContent = 'Ошибка: ' + e.message;
+      err.style.display = 'block';
+    });
+};
 
 // ============================================================
 // PAYMENT MODAL
@@ -1979,6 +2489,437 @@ function submitReceipt(methodId){
 }
 
 // ============================================================
+// ORDERS DATA LAYER
+// ============================================================
+var ordersCache = []; // заявки, полученные с API (без содержимого файла — оно грузится по запросу)
+
+// Обновляет ordersCache с сервера и перерисовывает список + бейдж.
+// Вызывается при открытии админки и после изменения статуса заявки.
+// Без активного admin-токена (публичная страница) просто ничего не делает.
+function refreshOrdersFromApi(){
+  if(!adminToken) return Promise.resolve();
+  return apiFetch('/api/admin/orders').then(function(data){
+    ordersCache = (data.orders || []).map(function(o){
+      return {
+        id: o.id,
+        tierName: o.tier_name,
+        methodId: o.method_id,
+        methodName: o.method_name,
+        amount: o.amount,
+        contact: o.contact,
+        fileName: o.file_name,
+        fileType: o.file_type,
+        status: o.status,
+        createdAt: o.created_at,
+        clientIp: o.client_ip || '',
+        userAgent: o.user_agent || ''
+      };
+    });
+    renderOrdersList();
+    refreshOrdersBadge();
+  }).catch(function(e){ console.warn('Не удалось загрузить заявки:', e); });
+}
+
+function refreshOrdersBadge(){
+  var pendingCount = ordersCache.filter(function(o){ return o.status === 'pending'; }).length;
+  var badge = document.getElementById('orders-badge');
+  if(!badge) return;
+  if(pendingCount > 0){
+    badge.textContent = pendingCount;
+    badge.style.display = 'inline-flex';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function renderOrdersList(){
+  var wrap = document.getElementById('orders-list');
+  var orders = ordersCache;
+  if(!orders.length){
+    wrap.innerHTML = '<div class="order-empty">Заявок пока нет. Они появятся здесь, когда клиент отправит чек об оплате.</div>';
+    return;
+  }
+  var statusLabel = { pending:'На проверке', approved:'Подтверждено', rejected:'Отклонено' };
+  wrap.innerHTML = orders.map(function(o){
+    var isImage = (o.fileType||'').indexOf('image') === 0;
+    var dt = new Date(o.createdAt);
+    var dateStr = dt.toLocaleDateString('ru-RU') + ' ' + dt.toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'});
+    return ''+
+    '<div class="order-item '+o.status+'">'+
+      '<div class="order-top">'+
+        '<div>'+
+          '<div class="order-tier">'+ esc(o.tierName) +'</div>'+
+          '<div class="order-date">'+ dateStr +'</div>'+
+        '</div>'+
+        '<div class="order-status '+o.status+'">'+ statusLabel[o.status] +'</div>'+
+      '</div>'+
+      '<div class="order-meta">'+
+        '<div>Способ: <b>'+ esc(o.methodName) +'</b></div>'+
+        '<div>Сумма: <b>'+ esc(o.amount) +'</b></div>'+
+        '<div>Контакт: <b>'+ esc(o.contact) +'</b></div>'+
+        (o.clientIp ? '<div style="font-size:11px;color:var(--text-dim);margin-top:3px;">IP: <b style="color:var(--red-bright)">'+ esc(o.clientIp) +'</b></div>' : '')+
+        (o.userAgent ? '<div style="font-size:10px;color:var(--text-dim);margin-top:1px;word-break:break-all;">'+ esc(o.userAgent.slice(0,120)) +'</div>' : '')+
+      '</div>'+
+      '<div class="order-receipt-link js-view-receipt" data-order-id="'+o.id+'">'+
+        '<div class="file-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>'+
+        '<span>'+ esc(o.fileName) +' (открыть)</span>'+
+      '</div>'+
+      (o.status === 'pending' ?
+        '<div class="order-actions">'+
+          '<button class="approve-btn" data-order-id="'+o.id+'" data-action="approved">✓ Подтвердить</button>'+
+          '<button class="reject-btn" data-order-id="'+o.id+'" data-action="rejected">✕ Отклонить</button>'+
+        '</div>'
+        : '<div class="order-actions"><button data-order-id="'+o.id+'" data-action="pending">↺ Вернуть на проверку</button></div>'
+      )+
+    '</div>';
+  }).join('');
+}
+
+document.getElementById('orders-list').addEventListener('click', function(e){
+  var viewLink = e.target.closest('.js-view-receipt');
+  if(viewLink){
+    var orderId = viewLink.getAttribute('data-order-id');
+    var order = ordersCache.find(function(o){ return o.id === orderId; });
+    // Файл открывается напрямую по защищённой ссылке (требует admin-токен,
+    // поэтому передаём его как query-параметр, т.к. это обычная ссылка/картинка).
+    var url = API_BASE + '/api/admin/orders/' + orderId + '/file';
+    fetch(url, { headers: { 'Authorization': 'Bearer ' + adminToken } })
+      .then(function(res){ return res.blob(); })
+      .then(function(blob){
+        var objUrl = URL.createObjectURL(blob);
+        if(order && (order.fileType||'').indexOf('image') === 0){
+          document.getElementById('lightbox-img').src = objUrl;
+          document.getElementById('lightbox-overlay').classList.add('open');
+        } else {
+          window.open(objUrl, '_blank');
+        }
+      })
+      .catch(function(e){ showToast('Не удалось открыть файл: ' + e.message); });
+    return;
+  }
+  var actionBtn = e.target.closest('button[data-action]');
+  if(actionBtn){
+    var orderId2 = actionBtn.getAttribute('data-order-id');
+    var newStatus = actionBtn.getAttribute('data-action');
+    actionBtn.disabled = true;
+    apiFetch('/api/admin/orders/' + orderId2, { method: 'PUT', body: JSON.stringify({ status: newStatus }) })
+      .then(function(){ return refreshOrdersFromApi(); })
+      .catch(function(e){ showToast('Ошибка: ' + e.message); })
+      .finally(function(){ actionBtn.disabled = false; });
+  }
+});
+
+document.getElementById('lightbox-close').onclick = function(){
+  document.getElementById('lightbox-overlay').classList.remove('open');
+};
+document.getElementById('lightbox-overlay').onclick = function(e){
+  if(e.target === this) this.classList.remove('open');
+};
+
+function formatCardNum(num){
+  num = (num||'').replace(/\s+/g,'');
+  return num.replace(/(.{4})/g,'$1 ').trim();
+}
+
+function renderPayMethods(){
+  var list = document.getElementById('pay-methods-list');
+  list.innerHTML = '';
+  PAY_METHODS.forEach(function(m){
+    var price = currentPayTier[m.priceKey];
+    if(!price) return;
+    var btn = document.createElement('div');
+    btn.className = 'pay-method' + (activeMethod===m.id ? ' active' : '');
+    btn.innerHTML =
+      '<div class="pay-method-icon">'+ (m.isFlag ? '<span class="flag-icon">'+m.icon+'</span>' : m.icon) +'</div>'+
+      '<div class="pay-method-info">'+
+        '<div class="pay-method-name">'+ m.name +'</div>'+
+        '<div class="pay-method-desc">'+ m.desc +'</div>'+
+      '</div>'+
+      '<div class="pay-method-price">'+ m.prefix + num(price) +'</div>'+
+      '<div class="pay-method-chevron">▸</div>';
+    btn.onclick = function(){ selectPayMethod(m.id); };
+    list.appendChild(btn);
+  });
+}
+
+function selectPayMethod(id){
+  activeMethod = id;
+  // Hide the methods list and show the requisites view
+  document.getElementById('pay-methods-list').style.display = 'none';
+  document.querySelector('.pay-section-label').style.display = 'none';
+  hideAllReq();
+  var el = document.getElementById('req-' + id);
+  if(el){
+    // Inject how-to-pay instructions at top of req block if not present
+    if(!el.querySelector('.how-to-pay')){
+      var method = PAY_METHODS.find(function(m){ return m.id===id; });
+      var howHtml = buildHowToPay(id, method);
+      el.insertAdjacentHTML('afterbegin', howHtml);
+    }
+    el.classList.add('show');
+    // Advance steps
+    if(document.getElementById('pstep1')) document.getElementById('pstep1').className='pay-step done';
+    if(document.getElementById('pstep2')) document.getElementById('pstep2').className='pay-step done';
+    if(document.getElementById('pstep3')) document.getElementById('pstep3').className='pay-step';
+    // Show back button
+    document.getElementById('pay-back-btn').style.display = 'flex';
+    // Update header
+    var method2 = PAY_METHODS.find(function(m){ return m.id===id; });
+    if(method2) document.getElementById('pay-tier-label').textContent = method2.name + ' — ' + currentPayTier.name;
+    // Scroll to top
+    document.getElementById('pay-modal').scrollTo({top:0, behavior:'smooth'});
+  }
+}
+
+function buildHowToPay(id, method){
+  var steps = [];
+  if(id === 'rub' || id === 'uah'){
+    var currency = id === 'rub' ? 'рублей' : 'гривен';
+    var m = PAY_METHODS.find(function(x){ return x.id===id; });
+    var price = m ? (m.prefix + num(currentPayTier[m.priceKey]||0)) : '';
+    steps = [
+      '<b>Скопируйте номер карты</b> — нажмите на него ниже',
+      'Откройте приложение вашего банка и переведите <b>' + price + '</b> на этот номер',
+      'Сделайте скриншот или сохраните квитанцию об оплате',
+      '<b>Вернитесь сюда</b> — загрузите чек и укажите ваш Telegram'
+    ];
+  } else if(id === 'crypto'){
+    steps = [
+      'Выберите сеть — <b>TON</b> или <b>USDT TRC-20</b>',
+      '<b>Скопируйте адрес кошелька</b> — нажмите на него ниже',
+      'Откройте ваш крипто-кошелёк и переведите нужную сумму',
+      '<b>Сделайте скриншот транзакции</b> и загрузите его ниже'
+    ];
+  } else if(id === 'stars'){
+    steps = [
+      'Напишите нам в Telegram по контакту ниже',
+      'Мы пришлём инвойс — вы оплатите его звёздами прямо в чате',
+      'После оплаты сделайте <b>скриншот</b> подтверждения',
+      'Загрузите скриншот в форму ниже'
+    ];
+  }
+  if(!steps.length) return '';
+  return '<div class="how-to-pay"><div class="how-to-pay-title">📋 Как перевести деньги</div><ol>'+ steps.map(function(s){ return '<li>'+s+'</li>'; }).join('') +'</ol></div>';
+}
+
+function hideAllReq(){
+  ['rub','uah','crypto','stars'].forEach(function(id){
+    var el = document.getElementById('req-'+id);
+    if(el) el.classList.remove('show');
+  });
+}
+
+document.getElementById('pay-close').onclick = function(){
+  document.getElementById('pay-modal').classList.remove('open');
+  unlockBody();
+};
+document.getElementById('pay-back-btn').onclick = function(){
+  activeMethod = null;
+  hideAllReq();
+  document.getElementById('pay-methods-list').style.display = '';
+  document.querySelector('.pay-section-label').style.display = '';
+  document.getElementById('pay-back-btn').style.display = 'none';
+  document.getElementById('pay-tier-label').textContent = currentPayTier.name + ' — выберите валюту';
+  // Reset steps
+  if(document.getElementById('pstep1')) document.getElementById('pstep1').className='pay-step done';
+  if(document.getElementById('pstep2')) document.getElementById('pstep2').className='pay-step';
+  if(document.getElementById('pstep3')) document.getElementById('pstep3').className='pay-step';
+  document.getElementById('pay-modal').scrollTo({top:0, behavior:'smooth'});
+};
+document.getElementById('pay-modal').onclick = function(e){
+  if(e.target === this){ this.classList.remove('open'); unlockBody(); }
+};
+
+function copyReq(el, val){
+  navigator.clipboard.writeText(val).then(function(){
+    var orig = el.textContent;
+    el.textContent = '✓ Скопировано';
+    el.style.color = '#A83328';
+    setTimeout(function(){ el.textContent = orig; el.style.color = ''; }, 1800);
+  }).catch(function(){
+    var tmp = document.createElement('textarea');
+    tmp.value = val; document.body.appendChild(tmp);
+    tmp.select(); document.execCommand('copy'); document.body.removeChild(tmp);
+    showToast('Скопировано ✓');
+  });
+}
+
+// Delegated click handler for dynamically rendered requisites (avoids inline onclick escaping issues)
+// Delegated click handler for "Оформить" buttons (avoids inline onclick escaping issues with tier names containing quotes)
+document.addEventListener('click', function(e){
+  var target = e.target.closest('.js-open-pay');
+  if(!target) return;
+  openPayModal(
+    target.getAttribute('data-name'),
+    parseFloat(target.getAttribute('data-rub'))  || 0,
+    parseFloat(target.getAttribute('data-usdt')) || 0,
+    parseFloat(target.getAttribute('data-uah'))  || 0,
+    parseFloat(target.getAttribute('data-stars'))|| 0
+  );
+});
+
+document.getElementById('pay-modal').addEventListener('click', function(e){
+  var target = e.target.closest('.js-copy');
+  if(!target) return;
+  var val = target.getAttribute('data-copy');
+  if(val) copyReq(target, val);
+});
+
+
+// ============================================================
+// LOGS SYSTEM
+// ============================================================
+var logsCache = [];
+var logsTotal = 0;
+var logsOffset = 0;
+var logsLimit  = 50;
+var logsType   = 'all';
+
+function refreshLogsFromApi(){
+  if(!adminToken) return;
+  var list = document.getElementById('logs-list');
+  list.innerHTML = '<div class="order-empty">Загрузка…</div>';
+
+  // Загружаем статистику и список параллельно
+  Promise.all([
+    apiFetch('/api/admin/logs/stats'),
+    apiFetch('/api/admin/logs?type='+ logsType +'&limit='+ logsLimit +'&offset='+ logsOffset)
+  ]).then(function(results){
+    var statsData = results[0];
+    var logsData  = results[1];
+
+    logsCache  = logsData.logs  || [];
+    logsTotal  = logsData.total || 0;
+
+    renderLogsStats(statsData);
+    renderLogsList();
+    renderLogsPagination();
+  }).catch(function(e){
+    list.innerHTML = '<div class="order-empty">Ошибка загрузки: '+ esc(e.message) +'</div>';
+  });
+}
+
+function renderLogsStats(data){
+  var bar = document.getElementById('logs-stats-bar');
+  var byType = data.byType || [];
+  var total  = byType.reduce(function(s,r){ return s + Number(r.c); }, 0);
+
+  var typeLabels = {
+    'request': 'Посещения',
+    'order_submit': 'Заявки',
+    'admin_login_ok': 'Входы',
+    'admin_login_fail': 'Неверный пароль',
+    'visit': 'Визиты'
+  };
+
+  var boxes = '<div class="logs-stats">';
+  boxes += '<div class="log-stat-box"><span class="log-stat-num">'+ total +'</span><span class="log-stat-lbl">Всего событий</span></div>';
+  byType.forEach(function(row){
+    boxes += '<div class="log-stat-box"><span class="log-stat-num">'+ row.c +'</span><span class="log-stat-lbl">'+ esc(typeLabels[row.event_type]||row.event_type) +'</span></div>';
+  });
+  boxes += '</div>';
+
+  // Топ IP
+  if(data.topIps && data.topIps.length){
+    boxes += '<div style="font-size:11px;color:var(--text-dim);margin-bottom:8px;font-weight:600;">ТОП IP-адресов:</div>';
+    boxes += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">';
+    data.topIps.slice(0,10).forEach(function(row){
+      boxes += '<div style="background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:3px 8px;font-size:11px;">';
+      boxes += '<b style="color:var(--red-bright)">'+ esc(row.ip) +'</b> <span style="color:var(--text-dim)">× '+ row.c +'</span></div>';
+    });
+    boxes += '</div>';
+  }
+
+  bar.innerHTML = boxes;
+}
+
+function renderLogsList(){
+  var list = document.getElementById('logs-list');
+  if(!logsCache.length){
+    list.innerHTML = '<div class="order-empty">Логов пока нет.</div>';
+    return;
+  }
+
+  var eventLabels = {
+    'request': 'Запрос',
+    'visit': 'Визит',
+    'order_submit': '📋 Заявка',
+    'admin_login_ok': '🔑 Вход',
+    'admin_login_fail': '🚫 Неверный пароль'
+  };
+
+  list.innerHTML = logsCache.map(function(log){
+    var dt = new Date(log.created_at);
+    var dateStr = dt.toLocaleDateString('ru-RU') + ' ' + dt.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    var label = eventLabels[log.event_type] || log.event_type;
+    var extra = '';
+    if(log.extra){
+      try{
+        var ex = JSON.parse(log.extra);
+        var parts = [];
+        if(ex.tierName) parts.push('Тариф: <b>'+ esc(ex.tierName) +'</b>');
+        if(ex.contact)  parts.push('Контакт: <b>'+ esc(ex.contact) +'</b>');
+        if(ex.methodId) parts.push('Способ: '+ esc(ex.methodId));
+        if(ex.orderId)  parts.push('ID: '+ esc(ex.orderId.slice(0,8))+'…');
+        if(parts.length) extra = '<div class="log-extra">'+ parts.join(' · ') +'</div>';
+      }catch(e){}
+    }
+    return ''+
+    '<div class="log-item event-'+ log.event_type +'">'+
+      '<div class="log-top">'+
+        '<span class="log-event ev-'+ log.event_type +'">'+ label +'</span>'+
+        '<span class="log-date">'+ dateStr +'</span>'+
+      '</div>'+
+      '<div class="log-ip">'+ esc(log.ip||'—') + (log.country ? ' <span style="color:var(--text-dim);font-weight:400">['+ esc(log.country) +']</span>' : '') +'</div>'+
+      (log.path ? '<div class="log-path">'+ esc(log.method||'GET') +' '+ esc(log.path) +'</div>' : '')+
+      (log.user_agent ? '<div class="log-ua">'+ esc(log.user_agent.slice(0,150)) +'</div>' : '')+
+      (log.referer ? '<div class="log-path">Ref: '+ esc(log.referer.slice(0,100)) +'</div>' : '')+
+      extra +
+    '</div>';
+  }).join('');
+}
+
+function renderLogsPagination(){
+  var pg = document.getElementById('logs-pagination');
+  var totalPages = Math.ceil(logsTotal / logsLimit);
+  var curPage    = Math.floor(logsOffset / logsLimit) + 1;
+  if(totalPages <= 1){ pg.style.display='none'; return; }
+  pg.style.display = 'flex';
+  pg.innerHTML =
+    '<button class="logs-page-btn" id="logs-prev" '+(curPage<=1?'disabled':'')+'>← Пред</button>'+
+    '<span class="logs-page-info">Стр. '+ curPage +' / '+ totalPages +' (всего '+ logsTotal +')</span>'+
+    '<button class="logs-page-btn" id="logs-next" '+(curPage>=totalPages?'disabled':'')+'>След →</button>';
+  document.getElementById('logs-prev').onclick = function(){
+    if(logsOffset > 0){ logsOffset = Math.max(0, logsOffset - logsLimit); refreshLogsFromApi(); }
+  };
+  document.getElementById('logs-next').onclick = function(){
+    if(logsOffset + logsLimit < logsTotal){ logsOffset += logsLimit; refreshLogsFromApi(); }
+  };
+}
+
+document.getElementById('logs-filter-type').onchange = function(){
+  logsType   = this.value;
+  logsOffset = 0;
+  refreshLogsFromApi();
+};
+
+document.getElementById('logs-refresh-btn').onclick = function(){
+  logsOffset = 0;
+  refreshLogsFromApi();
+};
+
+document.getElementById('logs-clear-btn').onclick = function(){
+  if(!confirm('Очистить все логи? Это действие необратимо.')) return;
+  apiFetch('/api/admin/logs', { method: 'DELETE' }).then(function(){
+    logsCache = []; logsTotal = 0; logsOffset = 0;
+    document.getElementById('logs-list').innerHTML = '<div class="order-empty">Логи очищены.</div>';
+    document.getElementById('logs-stats-bar').innerHTML = '';
+    document.getElementById('logs-pagination').style.display = 'none';
+    showToast('Логи очищены ✓');
+  }).catch(function(e){ showToast('Ошибка: ' + e.message); });
+};
+
+// ============================================================
 // BLACKOUT REVEAL
 // ============================================================
 var blackouts = document.querySelectorAll('.blackout');
@@ -2001,6 +2942,7 @@ fetchTiersFromApi().then(function(apiTiers){
 }).catch(function(e){
   console.warn('Не удалось загрузить тарифы с API, используются локальные значения:', e);
 });
+refreshOrdersBadge();
 </script>
 </body>
 </html>
