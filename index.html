@@ -667,6 +667,30 @@ footer{
 }
 .req-card-num:hover{border-color:#8B2820; color:#A83328;}
 
+/* Запрет копирования текста по всему сайту — кроме реквизитов оплаты
+   (банковские карты, TON/TRC адреса), которые помечены классом .js-copy.
+   Это защищает контент страницы от бездумного копипаста, но не мешает
+   людям скопировать номер карты/адрес кошелька для оплаты. */
+body{
+  -webkit-user-select:none;
+  -moz-user-select:none;
+  -ms-user-select:none;
+  user-select:none;
+}
+.js-copy, .js-copy *{
+  -webkit-user-select:all !important;
+  -moz-user-select:all !important;
+  -ms-user-select:all !important;
+  user-select:all !important;
+}
+/* Поля ввода должны оставаться выделяемыми и копируемыми как обычно —
+   иначе человек не сможет исправить опечатку или вставить контакт/чек */
+input, textarea{
+  -webkit-user-select:text !important;
+  -moz-user-select:text !important;
+  user-select:text !important;
+}
+
 .req-addr-box{
   display:flex;
   align-items:center;
@@ -1933,14 +1957,6 @@ footer{
   </div>
 </div>
 
-<!-- Bonus info modal (one-time, closable) -->
-<div class="modal-overlay" id="bonus-modal">
-  <div class="modal">
-    <div class="modal-title" id="bonus-modal-title">Как получить бонус</div>
-    <button class="modal-close" id="bonus-modal-close">✕</button>
-    <p style="font-size:14px; line-height:1.6; color:var(--text); margin:0; white-space:pre-wrap;" id="bonus-modal-text"></p>
-  </div>
-</div>
 
 <!-- Personal broadcast notification from admin — always on top, over everything -->
 <div class="broadcast-overlay" id="broadcast-overlay">
@@ -2070,9 +2086,8 @@ footer{
         <div class="field"><label>Текст кнопки</label><input type="text" id="bonus-btn-input" placeholder="Узнать как получить"></div>
 
         <div class="divider"></div>
-        <div class="section-label">Всплывающее окно (открывается по кнопке)</div>
-        <div class="field"><label>Заголовок окна</label><input type="text" id="bonus-modal-title-input" placeholder="Как получить бонус"></div>
-        <div class="field"><label>Текст окна</label><textarea id="bonus-modal-text-input" rows="5" placeholder="Напишите 10 комментариев в нашем тик токе, чтоб получить, и отправьте скрины в поддержку!"></textarea></div>
+        <div class="section-label">Ссылка (кнопка сразу переходит по ней, без окна)</div>
+        <div class="field"><label>Ссылка на Telegram</label><input type="text" id="bonus-link-input" placeholder="https://t.me/pazz67"></div>
 
         <div class="row-btns" style="margin-top:14px">
           <button class="btn-sm red" id="bonus-save">Сохранить</button>
@@ -2318,8 +2333,7 @@ function saveRequisitesToApi(r){
 var DEFAULT_BONUS = {
   title: 'Получить 5 гигабайт бесплатно!',
   btnText: 'Узнать как получить',
-  modalTitle: 'Как получить бонус',
-  modalText: 'Напишите 10 комментариев в нашем тик токе, чтоб получить, и отправьте скрины в поддержку!'
+  link: 'https://t.me/pazz67'
 };
 
 // Публичная страница — текст бонуса без авторизации
@@ -2343,8 +2357,7 @@ function renderBonus(){
 function fillBonusForm(){
   document.getElementById('bonus-title-input').value = bonus.title;
   document.getElementById('bonus-btn-input').value = bonus.btnText;
-  document.getElementById('bonus-modal-title-input').value = bonus.modalTitle;
-  document.getElementById('bonus-modal-text-input').value = bonus.modalText;
+  document.getElementById('bonus-link-input').value = bonus.link || DEFAULT_BONUS.link;
 }
 
 document.getElementById('bonus-save').onclick = function(){
@@ -2352,8 +2365,7 @@ document.getElementById('bonus-save').onclick = function(){
   var next = {
     title: document.getElementById('bonus-title-input').value.trim() || DEFAULT_BONUS.title,
     btnText: document.getElementById('bonus-btn-input').value.trim() || DEFAULT_BONUS.btnText,
-    modalTitle: document.getElementById('bonus-modal-title-input').value.trim() || DEFAULT_BONUS.modalTitle,
-    modalText: document.getElementById('bonus-modal-text-input').value.trim() || DEFAULT_BONUS.modalText
+    link: document.getElementById('bonus-link-input').value.trim() || DEFAULT_BONUS.link
   };
   btn.disabled = true;
   saveBonusToApi(next).then(function(){
@@ -2365,20 +2377,11 @@ document.getElementById('bonus-save').onclick = function(){
   }).finally(function(){ btn.disabled = false; });
 };
 
-// Открытие/закрытие всплывающего окна бонуса (одноразовое, можно закрыть)
+// Клик по кнопке бонуса — теперь просто переход по ссылке (в новой вкладке),
+// без всплывающего окна. Ссылка настраивается в админке.
 document.getElementById('bonus-cta-btn').onclick = function(){
-  trackClick('Нажал кнопку бонуса "Узнать как получить"', 'бонус');
-  document.getElementById('bonus-modal-title').textContent = bonus.modalTitle;
-  document.getElementById('bonus-modal-text').textContent = bonus.modalText;
-  document.getElementById('bonus-modal').classList.add('open');
-  lockBody();
-};
-document.getElementById('bonus-modal-close').onclick = function(){
-  document.getElementById('bonus-modal').classList.remove('open');
-  unlockBody();
-};
-document.getElementById('bonus-modal').onclick = function(e){
-  if(e.target === this){ this.classList.remove('open'); unlockBody(); }
+  trackClick('Нажал кнопку бонуса — переход по ссылке', 'бонус', bonus.link);
+  window.open(bonus.link || DEFAULT_BONUS.link, '_blank', 'noopener');
 };
 
 function cardChipsFromString(str){
@@ -3600,6 +3603,66 @@ document.getElementById('pay-back-btn').onclick = function(){
 document.getElementById('pay-modal').onclick = function(e){
   if(e.target === this){ this.classList.remove('open'); unlockBody(); }
 };
+
+// ============================================================
+// ЗАЩИТА ОТ КОПИРОВАНИЯ КОНТЕНТА САЙТА
+// ============================================================
+// Блокируем: правый клик (контекстное меню), событие copy/cut, а также
+// сочетания клавиш Ctrl/Cmd+C, Ctrl/Cmd+X, Ctrl/Cmd+A, Ctrl/Cmd+U (просмотр
+// исходного кода), F12 и Ctrl+Shift+I/J/C (открытие devtools — блокируется
+// только "по-джентльменски", полностью запретить devtools в браузере
+// нельзя, но это отсекает случайных пользователей).
+// Реквизиты оплаты (.js-copy — номера карт, TON/TRC адреса) и обычные
+// поля ввода (input/textarea) из-под этой защиты ИСКЛЮЧЕНЫ — там
+// копирование/выделение должно работать как обычно.
+(function setupCopyProtection(){
+  function isExempt(el){
+    if(!el || !el.closest) return false;
+    return !!el.closest('.js-copy, input, textarea');
+  }
+
+  document.addEventListener('contextmenu', function(e){
+    if(isExempt(e.target)) return;
+    e.preventDefault();
+  });
+
+  document.addEventListener('copy', function(e){
+    if(isExempt(e.target)) return;
+    e.preventDefault();
+  });
+
+  document.addEventListener('cut', function(e){
+    if(isExempt(e.target)) return;
+    e.preventDefault();
+  });
+
+  document.addEventListener('selectstart', function(e){
+    if(isExempt(e.target)) return;
+    e.preventDefault();
+  });
+
+  document.addEventListener('keydown', function(e){
+    if(isExempt(e.target)) return;
+    var key = (e.key || '').toLowerCase();
+    var ctrlOrCmd = e.ctrlKey || e.metaKey;
+
+    // Ctrl/Cmd + C (копировать), X (вырезать), A (выделить всё), U (исходный код), S (сохранить страницу)
+    if(ctrlOrCmd && ['c','x','a','u','s'].indexOf(key) !== -1){
+      e.preventDefault();
+      return;
+    }
+    // F12 — открыть DevTools
+    if(key === 'f12'){
+      e.preventDefault();
+      return;
+    }
+    // Ctrl/Cmd+Shift+I / J / C — DevTools / консоль / инспектор элемента
+    if(ctrlOrCmd && e.shiftKey && ['i','j','c'].indexOf(key) !== -1){
+      e.preventDefault();
+      return;
+    }
+  });
+})();
 
 function copyReq(el, val){
   navigator.clipboard.writeText(val).then(function(){
