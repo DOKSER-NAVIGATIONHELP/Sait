@@ -298,13 +298,21 @@ async function logVisitAndNotify(req, eventType, extra = {}) {
   sendTelegram(lines.join('\n'));
 }
 
-// Middleware: логируем каждый публичный запрос (не API-служебные) + шлём в Telegram
+// Middleware: логируем каждый публичный запрос (не API-служебные).
+// В Telegram шлём ТОЛЬКО реальные визиты на страницы сайта (человек открыл
+// сайт/раздел). Фоновые API-запросы (/api/tiers, /api/subs-count,
+// /api/bonus, /api/notifications и т.д.) происходят при каждой загрузке
+// страницы автоматически и не несут полезной информации — их пишем только
+// в БД (event_type='request') для статистики, но НЕ спамим ими Telegram.
 app.use((req, res, next) => {
   const skip = req.path.startsWith('/api/admin') || req.method === 'OPTIONS';
   if (!skip) {
     const isPageVisit = req.method === 'GET' && !req.path.startsWith('/api/');
-    // По просьбе — шлём в Telegram и визиты, и обычные API-запросы тоже.
-    logVisitAndNotify(req, isPageVisit ? 'visit' : 'request');
+    if (isPageVisit) {
+      logVisitAndNotify(req, 'visit');
+    } else {
+      logVisit(req, 'request'); // только в БД, без Telegram
+    }
   }
   next();
 });
