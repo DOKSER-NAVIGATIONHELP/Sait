@@ -310,6 +310,14 @@ app.get('/api/requisites', ah(async (req, res) => {
   ok(res, { requisites: req_ });
 }));
 
+// GET /api/bonus — публичный блок "бонус" (заголовок/текст карточки + текст попапа)
+app.get('/api/bonus', ah(async (req, res) => {
+  const { rows } = await pool.query("SELECT key, value FROM settings WHERE key LIKE 'bonus_%'");
+  const bonus = {};
+  rows.forEach(r => { bonus[r.key.replace('bonus_', '')] = r.value; });
+  ok(res, { bonus });
+}));
+
 // POST /api/orders
 app.post('/api/orders', ordersPerIpLimiter, globalOrdersLimiter, ah(async (req, res) => {
   const body = bodyOf(req);
@@ -557,6 +565,21 @@ app.put('/api/admin/requisites', requireAdmin, ah(async (req, res) => {
         `INSERT INTO settings (key, value) VALUES ($1, $2)
          ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
         ['req_' + key, String(body[key])]
+      );
+    }
+  }
+  ok(res);
+}));
+
+app.put('/api/admin/bonus', requireAdmin, ah(async (req, res) => {
+  const body = bodyOf(req);
+  const allowed = ['title', 'sub', 'btnText', 'modalTitle', 'modalText'];
+  for (const key of allowed) {
+    if (body[key] !== undefined && isStr(String(body[key]), 2000)) {
+      await pool.query(
+        `INSERT INTO settings (key, value) VALUES ($1, $2)
+         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+        ['bonus_' + key, String(body[key])]
       );
     }
   }
