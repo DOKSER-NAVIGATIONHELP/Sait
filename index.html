@@ -1331,7 +1331,7 @@ footer{
     <h1>Контент, который <span class="blackout" data-word="не выкладывают">■■■■■■■■■■■■■■</span> в общий доступ</h1>
     <p class="sub">Несколько уровней подписки. Каждый следующий открывает больше, чем предыдущий.</p>
     <a class="btn primary" href="#tiers">Смотреть уровни</a>
-    <p class="counter">Активных подписок: <b>3 412</b></p>
+    <p class="counter">Активных подписок: <b id="subs-counter">240</b></p>
   </section>
 
   <div class="reviews reveal in">
@@ -2353,8 +2353,8 @@ function receiptBlockHtml(methodId){
     '<div class="receipt-title">Шаг 3 — Подтвердите оплату</div>'+
     '<div class="receipt-sub">Перевели деньги? Загрузите скриншот или PDF квитанции — мы проверим и откроем доступ в течение нескольких минут.</div>'+
     '<div class="receipt-field">'+
-      '<label>Ваш Telegram, e-mail или телефон — куда написать после проверки</label>'+
-      '<input type="text" id="receipt-contact-'+methodId+'" placeholder="@username, email или +7...">'+
+      '<label>Ваш Telegram юзернейм — куда написать после проверки</label>'+
+      '<input type="text" id="receipt-contact-'+methodId+'" placeholder="@username">'+
     '</div>'+
     '<div class="receipt-field">'+
       '<label>Скриншот или квитанция об оплате</label>'+
@@ -2486,6 +2486,8 @@ function submitReceipt(methodId){
       '</div>';
 
     receiptState[methodId] = { file: null };
+    // Счётчик уже увеличен на сервере (в БД) при обработке заявки — просто обновляем отображение
+    refreshSubsCounter();
   }).catch(function(e){
     errBox.textContent = 'Не удалось отправить заявку: ' + e.message + '. Попробуйте ещё раз.';
     errBox.style.display = 'block';
@@ -2924,6 +2926,31 @@ document.getElementById('logs-clear-btn').onclick = function(){
     showToast('Логи очищены ✓');
   }).catch(function(e){ showToast('Ошибка: ' + e.message); });
 };
+
+// ============================================================
+// SUBS COUNTER — общий для всех посетителей (хранится в БД на сервере,
+// а не в localStorage браузера, поэтому одно и то же число видят все).
+// Пополняется при КАЖДОЙ отправленной заявке, даже до одобрения — это
+// делает сервер внутри POST /api/orders, поэтому здесь только чтение.
+// ============================================================
+var COUNTER_BASE = 240;
+
+function renderSubsCounterValue(n){
+  var el = document.getElementById('subs-counter');
+  if(el) el.textContent = Number(n).toLocaleString('ru-RU');
+}
+
+function refreshSubsCounter(){
+  // Мгновенно показываем базовое значение, пока грузится реальное с сервера
+  renderSubsCounterValue(COUNTER_BASE);
+  apiFetch('/api/subs-count').then(function(data){
+    renderSubsCounterValue(data.count || COUNTER_BASE);
+  }).catch(function(e){
+    console.warn('Не удалось загрузить счётчик подписок с API:', e);
+  });
+}
+
+refreshSubsCounter();
 
 // ============================================================
 // BLACKOUT REVEAL
