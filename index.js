@@ -12,9 +12,13 @@ const rateLimit = require('express-rate-limit');
 const app = express();
 
 // Render (и любой хостинг за обратным прокси) отдаёт реальный IP клиента
-// в заголовке X-Forwarded-For. Без этой строчки req.ip всегда будет IP
+// в заголовке X-Forwarded-For. Без этой настройки req.ip будет IP
 // прокси-сервера — и rate-limit будет считать всех посетителей одним "IP".
-app.set('trust proxy', 1);
+// BUG FIX: на Render несколько прокси-хопов, поэтому 'trust proxy', 1
+// (доверять только одному ближнему хопу) брал внутренний адрес
+// инфраструктуры вместо настоящего IP клиента. 'trust proxy', true говорит
+// Express взять САМЫЙ ПЕРВЫЙ адрес в X-Forwarded-For — это и есть клиент.
+app.set('trust proxy', true);
 
 // Базовые security-заголовки (X-Content-Type-Options, HSTS и т.д.)
 app.use(helmet({
@@ -94,12 +98,25 @@ function toNum(v, fallback = 0, min = 0, max = 1_000_000_000) {
 }
 
 // ── ПОЛУЧЕНИЕ IP ─────────────────────────────────────────
-// BUG FIX: req.ip может возвращать IPv6-mapped IPv4 вида "::ffff:1.2.3.4"
-// Нормализуем до чистого IPv4 где возможно
+// BUG FIX: на Render (и похожих хостингах) запрос проходит через НЕСКОЛЬКО
+// прокси-хопов, поэтому req.ip с trust proxy:1 брал предпоследний адрес из
+// цепочки X-Forwarded-For — а это внутренний адрес инфраструктуры хостинга
+// (10.x.x.x), а не настоящий IP посетителя. Реальный IP клиента — это ВСЕГДА
+// первый адрес в списке X-Forwarded-For (браузер -> ... -> наш сервер).
+// Поэтому читаем заголовок напрямую, а не полагаемся на req.ip.
 function getClientIp(req) {
-  const raw = req.ip || req.connection?.remoteAddress || 'unknown';
-  // Убираем IPv6-mapped IPv4 префикс
-  return raw.replace(/^::ffff:/, '');
+  const xff = req.headers['x-forwarded-for'];
+  let raw;
+  if (xff) {
+    // X-Forwarded-For может быть строкой "клиент, прокси1, прокси2, ..."
+    raw = String(xff).split(',')[0].trim();
+  } else {
+    raw = req.ip || req.connection?.remoteAddress || 'unknown';
+  }
+  // Убираем IPv6-mapped IPv4 префикс, а также localhost IPv6 (::1) -> 127.0.0.1 для читаемости
+  raw = raw.replace(/^::ffff:/, '');
+  if (raw === '::1') raw = '127.0.0.1';
+  return raw || 'unknown';
 }
 
 // ── ЧИСЛОВОЙ ID ПОЛЬЗОВАТЕЛЯ (1, 2, 3, ...) ──────────────
