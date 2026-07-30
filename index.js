@@ -111,6 +111,64 @@ async function logVisit(req, eventType = 'visit', extra = {}) {
   }
 }
 
+// ── TELEGRAM УВЕДОМЛЕНИЯ ─────────────────────────────────
+const TG_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const TG_CHAT  = '-5119387394';
+
+const TG_EVENT_LABELS = {
+  admin_login_ok:   '🟢 Вход в админку',
+  admin_login_fail: '🔴 Неудачный вход в админку',
+  order_submit:     '📦 Новая заявка',
+  visit:            '👁 Визит',
+  request:          '🌐 Запрос',
+};
+
+async function sendTelegram(text) {
+  if (!TG_TOKEN) return; // переменная не задана — молча пропускаем
+  try {
+    await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        chat_id:    TG_CHAT,
+        text:       text.slice(0, 4096),
+        parse_mode: 'HTML',
+      }),
+    });
+  } catch (e) {
+    console.error('Telegram send error:', e.message);
+  }
+}
+
+// Отправляем в Telegram только важные события (не каждый request)
+const TG_IMPORTANT = new Set(['admin_login_ok', 'admin_login_fail', 'order_submit']);
+
+async function logVisitAndNotify(req, eventType, extra = {}) {
+  await logVisit(req, eventType, extra);
+  if (!TG_IMPORTANT.has(eventType)) return;
+
+  const ip    = getClientIp(req);
+  const ua    = (req.headers['user-agent'] || '—').slice(0, 120);
+  const label = TG_EVENT_LABELS[eventType] || eventType;
+  const now   = new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' });
+
+  let lines = [
+    `<b>${label}</b>`,
+    `🕐 ${now} МСК`,
+    `🌐 IP: <code>${ip}</code>`,
+    `📱 UA: ${ua}`,
+  ];
+
+  if (eventType === 'order_submit' && extra) {
+    lines.push(`📋 Тариф: ${extra.tierName || '—'}`);
+    lines.push(`💳 Способ: ${extra.methodId || '—'}`);
+    lines.push(`📞 Контакт: ${extra.contact || '—'}`);
+    lines.push(`🆔 ID заявки: <code>${extra.orderId || '—'}</code>`);
+  }
+
+  sendTelegram(lines.join('\n'));
+}
+
 // Middleware: логируем каждый публичный запрос (не API-служебные)
 app.use((req, res, next) => {
   // Логируем только публичные страницы и API заявок — не сам GET /api/* опрос
@@ -284,8 +342,8 @@ app.post('/api/orders', ordersPerIpLimiter, globalOrdersLimiter, ah(async (req, 
     [id, tierName, methodId, methodName || methodId, String(amount ?? ''), contact, fileName, fileType, fileData, 'pending', new Date().toISOString(), ip, userAgent]
   );
 
-  // Логируем событие отправки заявки
-  await logVisit(req, 'order_submit', { orderId: id, tierName, methodId, contact: contact.slice(0, 50) });
+  // Логируем событие отправки заявки + уведомление в Telegram
+  await logVisitAndNotify(req, 'order_submit', { orderId: id, tierName, methodId, contact: contact.slice(0, 50) });
 
   ok(res, { id });
 }));
@@ -306,8 +364,8 @@ app.post('/api/admin/login', loginLimiter, ah(async (req, res) => {
   const ip = getClientIp(req);
   const ok_ = verifyPassword(password, row.value);
 
-  // Логируем попытки входа
-  await logVisit(req, ok_ ? 'admin_login_ok' : 'admin_login_fail', { ip });
+  // Логируем попытки входа + уведомление в Telegram
+  await logVisitAndNotify(req, ok_ ? 'admin_login_ok' : 'admin_login_fail', { ip });
 
   if (!ok_) return err(res, 'Неверный пароль', 401);
 
