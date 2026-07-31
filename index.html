@@ -4499,6 +4499,11 @@ fetchTiersFromApi().then(function(apiTiers){
   console.warn('Не удалось загрузить тарифы с API, используются локальные значения:', e);
   renderPublic(); // показываем хотя бы локальные значения, лучше чем пустой экран
 });
+fetchRequisitesFromApi().then(function(r){
+  requisites = r;
+}).catch(function(e){
+  console.warn('Не удалось загрузить реквизиты с API, используются локальные значения:', e);
+});
 fetchBonusFromApi().then(function(b){
   bonus = b;
   renderBonus();
