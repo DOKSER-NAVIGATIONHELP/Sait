@@ -470,6 +470,19 @@ app.get('/api/bonus', ah(async (req, res) => {
   ok(res, { bonus });
 }));
 
+// GET /api/orders/mine — статус заявок текущего посетителя (по clientId из localStorage)
+// Отдаём только безопасные поля: без file_data, ip, user_agent, contact — чтобы не спалить чужие данные
+// даже если кто-то подставит чужой clientId (он не секрет, но лучше не отдавать лишнее).
+app.get('/api/orders/mine', ah(async (req, res) => {
+  const clientId = req.query.clientId;
+  if (!isClientId(clientId)) return ok(res, { orders: [] });
+  const { rows } = await pool.query(
+    'SELECT id, tier_name, method_name, amount, status, created_at FROM orders WHERE client_id = $1 ORDER BY created_at DESC LIMIT 20',
+    [clientId]
+  );
+  ok(res, { orders: rows });
+}));
+
 // POST /api/orders
 app.post('/api/orders', ordersPerIpLimiter, globalOrdersLimiter, ah(async (req, res) => {
   const body = bodyOf(req);
