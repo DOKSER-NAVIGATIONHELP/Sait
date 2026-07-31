@@ -237,6 +237,27 @@ h1{
 }
 .tier.highlight:hover{box-shadow:0 22px 50px rgba(193,68,60,.2);}
 
+.tier-skeleton{
+  position:relative;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:var(--panel);
+  padding:24px 22px;
+  min-height:360px;
+  overflow:hidden;
+}
+.tier-skeleton::after{
+  content:'';
+  position:absolute;
+  inset:0;
+  background:linear-gradient(90deg, transparent, rgba(255,255,255,.06), transparent);
+  transform:translateX(-100%);
+  animation:tier-shimmer 1.3s infinite;
+}
+@keyframes tier-shimmer{
+  100%{ transform:translateX(100%); }
+}
+
 .tier-top{
   display:flex;
   align-items:flex-start;
@@ -1858,7 +1879,11 @@ input, textarea{
     <p>Выберите план — от базового ознакомления до полного доступа.</p>
   </div>
 
-  <div class="tiers" id="tiers-container"></div>
+  <div class="tiers" id="tiers-container">
+    <div class="tier-skeleton"></div>
+    <div class="tier-skeleton"></div>
+    <div class="tier-skeleton"></div>
+  </div>
 
   <div class="rail"><div class="rail-fill"></div></div>
   <div class="rail-caption"><span>меньше доступа</span><span>полный доступ</span></div>
@@ -2552,7 +2577,6 @@ function openAdmin(){
   fetchTiersFromApi().then(function(apiTiers){
     tiers = apiTiers;
     renderAdminList();
-    fillRequisitesForm();
   }).catch(function(e){ showToast('Не удалось загрузить тарифы: ' + e.message); });
   fetchRequisitesFromApi().then(function(r){
     requisites = r;
@@ -4462,15 +4486,18 @@ setTimeout(function(){
 // ============================================================
 // INIT
 // ============================================================
-renderPublic(); // мгновенный рендер дефолтных тарифов, пока грузится API
+// Тарифы не рендерим сразу из localStorage/дефолтов — вместо мелькания
+// устаревших цифр показываем скелетон (см. #tiers-container в разметке),
+// пока не придёт актуальный ответ от API.
 renderBonus(); // мгновенный рендер дефолтного бонус-блока, пока грузится API
 fetchTiersFromApi().then(function(apiTiers){
   if(apiTiers && apiTiers.length){
     tiers = apiTiers;
-    renderPublic();
   }
+  renderPublic();
 }).catch(function(e){
   console.warn('Не удалось загрузить тарифы с API, используются локальные значения:', e);
+  renderPublic(); // показываем хотя бы локальные значения, лучше чем пустой экран
 });
 fetchBonusFromApi().then(function(b){
   bonus = b;
