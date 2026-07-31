@@ -1035,7 +1035,7 @@ app.get('/api/admin/requisites', requireAdmin, ah(async (req, res) => {
 
 app.put('/api/admin/requisites', requireAdmin, ah(async (req, res) => {
   const body = bodyOf(req);
-  const allowed = ['rubBank', 'rubCard', 'rubCardsAccepted', 'uahBank', 'uahCard', 'uahCardsAccepted', 'tonAddress', 'trcAddress', 'starsNote'];
+  const allowed = ['rubBank', 'rubCard', 'rubCardsAccepted', 'uahBank', 'uahCard', 'uahCardsAccepted', 'xrocketLink', 'cryptobotLink', 'tonAddress', 'trcAddress', 'starsManager', 'starsNote'];
   for (const key of allowed) {
     if (body[key] !== undefined && isStr(String(body[key]), 2000)) {
       await pool.query(
