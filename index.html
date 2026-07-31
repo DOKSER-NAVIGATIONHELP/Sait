@@ -148,6 +148,55 @@ h1{
 }
 .counter b{color:var(--red-bright); font-weight:700;}
 
+/* MY ORDERS STATUS TRACKER */
+.my-orders{
+  margin:14px 24px 0;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.my-order-card{
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:var(--panel);
+  padding:14px 16px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+.my-order-dot{
+  flex-shrink:0;
+  width:9px; height:9px;
+  border-radius:50%;
+}
+.my-order-dot.pending{ background:#D9A441; box-shadow:0 0 8px rgba(217,164,65,.6); animation:pulse-dot 1.6s ease-in-out infinite; }
+.my-order-dot.approved{ background:#3FAE5C; box-shadow:0 0 8px rgba(63,174,92,.6); }
+.my-order-dot.rejected{ background:var(--red-bright); box-shadow:0 0 8px rgba(168,51,40,.5); }
+@keyframes pulse-dot{
+  0%,100%{ opacity:1; transform:scale(1); }
+  50%{ opacity:.5; transform:scale(.75); }
+}
+.my-order-body{flex:1; min-width:0;}
+.my-order-title{
+  font-family:var(--font-display);
+  font-weight:700;
+  font-size:13.5px;
+  margin-bottom:2px;
+}
+.my-order-sub{font-size:12px; color:var(--text-dim);}
+.my-order-badge{
+  flex-shrink:0;
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:.02em;
+  padding:5px 10px;
+  border-radius:20px;
+  white-space:nowrap;
+}
+.my-order-badge.pending{ background:rgba(217,164,65,.15); color:#D9A441; }
+.my-order-badge.approved{ background:rgba(63,174,92,.15); color:#3FAE5C; }
+.my-order-badge.rejected{ background:rgba(168,51,40,.15); color:var(--red-bright); }
+
 /* SECTION HEAD */
 .section-head{padding:48px 24px 22px;}
 .section-head h2{
@@ -1795,6 +1844,8 @@ input, textarea{
 <body>
 <div class="frame" id="public-page">
 
+  <div class="my-orders" id="my-orders-block" style="display:none;"></div>
+
   <section class="hero reveal in">
     <span class="mark">Клуб доступа</span>
     <h1>Контент, который <span class="blackout" data-word="не выкладывают">■■■■■■■■■■■■■■</span> в общий доступ</h1>
@@ -2126,7 +2177,19 @@ var ADMIN_DEVICE_KEY = 'admin_device_id_v1';
 function getOrCreateAdminDeviceId(){
   var id = localStorage.getItem(ADMIN_DEVICE_KEY);
   if(!id){
-    id = 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
+    // Криптографически стойкий ID устройства: crypto.randomUUID() опирается на
+    // защищённый ГСЧ ОС, в отличие от Math.random() (который предсказуем и не
+    // годится для секретов, дающих доступ в админку без пароля).
+    if(window.crypto && window.crypto.randomUUID){
+      id = 'd' + window.crypto.randomUUID().replace(/-/g,'');
+    } else if(window.crypto && window.crypto.getRandomValues){
+      var bytes = new Uint8Array(24);
+      window.crypto.getRandomValues(bytes);
+      id = 'd' + Array.from(bytes).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+    } else {
+      // Крайний резерв для очень старых браузеров без Web Crypto API
+      id = 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12) + Math.random().toString(36).slice(2, 12);
+    }
     localStorage.setItem(ADMIN_DEVICE_KEY, id);
   }
   return id;
@@ -3286,6 +3349,8 @@ function submitReceipt(methodId){
     receiptState[methodId] = { file: null };
     // Счётчик уже увеличен на сервере (в БД) при обработке заявки — просто обновляем отображение
     refreshSubsCounter();
+    // Сразу подтягиваем свежий статус заявки в блок "Мои заявки" вверху страницы
+    refreshMyOrders();
   }).catch(function(e){
     errBox.textContent = 'Не удалось отправить заявку: ' + e.message + '. Попробуйте ещё раз.';
     errBox.style.display = 'block';
@@ -3926,6 +3991,47 @@ function getOrCreateClientId(){
 }
 
 var supportClientId = getOrCreateClientId();
+
+// ============================================================
+// MY ORDERS — статус заявок текущего посетителя (вверху страницы)
+// ============================================================
+var ORDER_STATUS_LABEL = { pending: 'На обработке', approved: 'Принят', rejected: 'Отклонён' };
+var myOrdersPollTimer = null;
+
+function fmtOrderDate(iso){
+  try{
+    var d = new Date(iso);
+    return d.toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit' }) + ' в ' + d.toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' });
+  }catch(e){ return ''; }
+}
+
+function renderMyOrders(orders){
+  var block = document.getElementById('my-orders-block');
+  if(!orders || !orders.length){ block.style.display = 'none'; block.innerHTML=''; return; }
+  block.style.display = '';
+  block.innerHTML = orders.map(function(o){
+    var status = ['pending','approved','rejected'].indexOf(o.status) > -1 ? o.status : 'pending';
+    var sub = esc(o.method_name || '') + (o.amount ? ' · ' + esc(String(o.amount)) : '') + ' · ' + fmtOrderDate(o.created_at);
+    return '<div class="my-order-card">'+
+      '<span class="my-order-dot '+status+'"></span>'+
+      '<div class="my-order-body">'+
+        '<div class="my-order-title">'+ esc(o.tier_name || 'Тариф') +'</div>'+
+        '<div class="my-order-sub">'+ sub +'</div>'+
+      '</div>'+
+      '<span class="my-order-badge '+status+'">'+ ORDER_STATUS_LABEL[status] +'</span>'+
+    '</div>';
+  }).join('');
+}
+
+function refreshMyOrders(){
+  apiFetch('/api/orders/mine?clientId=' + encodeURIComponent(supportClientId)).then(function(data){
+    renderMyOrders(data.orders || []);
+  }).catch(function(){});
+}
+
+refreshMyOrders();
+// Пока есть заявки "на обработке" — опрашиваем чаще, чтобы статус обновился быстро
+myOrdersPollTimer = setInterval(refreshMyOrders, 15000);
 
 // ============================================================
 // ЧИСЛОВОЙ ID ПОЛЬЗОВАТЕЛЯ (1, 2, 3, ...) — для удобных логов
