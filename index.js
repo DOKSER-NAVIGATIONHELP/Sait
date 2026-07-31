@@ -55,13 +55,71 @@ if (!JWT_SECRET) {
 }
 
 // ── CORS ─────────────────────────────────────────────────
+// SECURITY FIX: раньше был полностью открыт (Access-Control-Allow-Origin: *)
+// без реальной необходимости. Ужесточаем: разрешаем только явно заданные
+// источники через ALLOWED_ORIGIN(S) в переменных окружения; если не заданы —
+// откатываемся к '*', но НЕ передаём Allow-Credentials с wildcard-origin
+// (это запрещено спецификацией и браузерами всё равно проигнорируется).
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
+
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
+  const origin = req.headers.origin;
+  if (ALLOWED_ORIGINS.length) {
+    if (origin && ALLOWED_ORIGINS.includes(origin)) {
+      res.header('Access-Control-Allow-Origin', origin);
+      res.header('Vary', 'Origin');
+      res.header('Access-Control-Allow-Credentials', 'true');
+    }
+  } else {
+    // Совместимость, если ALLOWED_ORIGINS не настроен — прежнее поведение
+    res.header('Access-Control-Allow-Origin', '*');
+  }
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
 });
+
+// ── COOKIES (без внешней зависимости cookie-parser) ──────
+function parseCookies(req) {
+  const header = req.headers.cookie;
+  const out = {};
+  if (!header) return out;
+  header.split(';').forEach(pair => {
+    const idx = pair.indexOf('=');
+    if (idx === -1) return;
+    const k = pair.slice(0, idx).trim();
+    const v = pair.slice(idx + 1).trim();
+    if (k) out[k] = decodeURIComponent(v);
+  });
+  return out;
+}
+
+const DEVICE_COOKIE_NAME = 'admin_device';
+
+function setDeviceCookie(res, deviceId) {
+  const isProd = process.env.NODE_ENV === 'production';
+  // ВАЖНО: фронтенд и API живут на разных доменах (см. API_BASE на клиенте),
+  // поэтому для кросс-доменной cookie обязательны SameSite=None и Secure —
+  // иначе браузер её просто не отправит обратно. В dev (http, не prod)
+  // SameSite=None без Secure браузеры блокируют, поэтому там используем Lax
+  // (кросс-доменное доверие устройства в dev всё равно не нужно).
+  const parts = [
+    `${DEVICE_COOKIE_NAME}=${encodeURIComponent(deviceId)}`,
+    'HttpOnly',
+    'Path=/api/admin',
+    `Max-Age=${Math.floor(TRUSTED_DEVICE_TTL_MS / 1000)}`,
+  ];
+  if (isProd) {
+    parts.push('Secure', 'SameSite=None');
+  } else {
+    parts.push('SameSite=Lax');
+  }
+  res.append('Set-Cookie', parts.join('; '));
+}
 
 function ok(res, data = {}) { res.json({ ok: true, ...data }); }
 function err(res, msg, status = 400) { res.status(status).json({ error: msg }); }
@@ -705,7 +763,7 @@ app.post('/api/support/messages', supportMsgLimiter, ah(async (req, res) => {
 // ── ADMIN AUTH ───────────────────────────────────────────
 
 app.post('/api/admin/login', loginLimiter, ah(async (req, res) => {
-  const { password, deviceId } = bodyOf(req);
+  const { password } = bodyOf(req);
   if (!isStr(password, 500)) return err(res, 'Пароль обязателен', 401);
 
   const { rows } = await pool.query("SELECT value FROM settings WHERE key = 'admin_password_hash'");
@@ -717,39 +775,48 @@ app.post('/api/admin/login', loginLimiter, ah(async (req, res) => {
 
   const ip = getClientIp(req);
   const ok_ = verifyPassword(password, row.value);
-  const hasDeviceId = isStr(deviceId, 150) && /^[a-zA-Z0-9_-]{8,150}$/.test(deviceId);
+
+  // SECURITY FIX: раньше deviceId присылал клиент и мы ему доверяли —
+  // это позволяло подделать/скопировать идентификатор устройства и
+  // получить "доверие" без реального пароля (см. разбор уязвимости).
+  // Теперь deviceId генерирует ТОЛЬКО сервер и хранит его в httpOnly-cookie,
+  // которую JS на странице прочитать не может и скопировать некуда.
+  const cookies = parseCookies(req);
+  let deviceId = cookies[DEVICE_COOKIE_NAME];
+  if (!isStr(deviceId, 150) || !/^[a-zA-Z0-9_-]{8,150}$/.test(deviceId)) {
+    deviceId = crypto.randomBytes(24).toString('base64url');
+  }
 
   // Логируем попытки входа + уведомление в Telegram
   await logVisitAndNotify(req, ok_ ? 'admin_login_ok' : 'admin_login_fail', { ip });
 
-  if (hasDeviceId) {
-    const now = new Date().toISOString();
-    const ua = (req.headers['user-agent'] || '').slice(0, 200);
-    if (ok_) {
-      // Успешный вход — увеличиваем счётчик подряд идущих успешных входов.
-      // На 3-м подряд успехе устройство становится доверенным на TRUSTED_DEVICE_TTL_MS.
-      const expiresAt = new Date(Date.now() + TRUSTED_DEVICE_TTL_MS).toISOString();
-      await pool.query(
-        `INSERT INTO admin_trusted_devices (device_id, success_count, trusted, label, ip, created_at, last_login_at, expires_at)
-         VALUES ($1, 1, 0, $2, $3, $4, $4, NULL)
-         ON CONFLICT (device_id) DO UPDATE SET
-           success_count = admin_trusted_devices.success_count + 1,
-           trusted = CASE WHEN admin_trusted_devices.success_count + 1 >= 3 THEN 1 ELSE admin_trusted_devices.trusted END,
-           expires_at = CASE WHEN admin_trusted_devices.success_count + 1 >= 3 THEN $5 ELSE admin_trusted_devices.expires_at END,
-           label = $2,
-           ip = $3,
-           last_login_at = $4`,
-        [deviceId, ua, ip, now, expiresAt]
-      );
-    } else {
-      // Неверный пароль сбрасывает серию для этого устройства и снимает доверие
-      await pool.query(
-        `INSERT INTO admin_trusted_devices (device_id, success_count, trusted, label, ip, created_at, last_login_at, expires_at)
-         VALUES ($1, 0, 0, $2, $3, $4, $4, NULL)
-         ON CONFLICT (device_id) DO UPDATE SET success_count = 0, trusted = 0, expires_at = NULL, label = $2, ip = $3, last_login_at = $4`,
-        [deviceId, ua, ip, now]
-      );
-    }
+  const now = new Date().toISOString();
+  const ua = (req.headers['user-agent'] || '').slice(0, 200);
+  if (ok_) {
+    // Успешный вход — увеличиваем счётчик подряд идущих успешных входов.
+    // На 3-м подряд успехе устройство становится доверенным на TRUSTED_DEVICE_TTL_MS.
+    const expiresAt = new Date(Date.now() + TRUSTED_DEVICE_TTL_MS).toISOString();
+    await pool.query(
+      `INSERT INTO admin_trusted_devices (device_id, success_count, trusted, label, ip, created_at, last_login_at, expires_at)
+       VALUES ($1, 1, 0, $2, $3, $4, $4, NULL)
+       ON CONFLICT (device_id) DO UPDATE SET
+         success_count = admin_trusted_devices.success_count + 1,
+         trusted = CASE WHEN admin_trusted_devices.success_count + 1 >= 3 THEN 1 ELSE admin_trusted_devices.trusted END,
+         expires_at = CASE WHEN admin_trusted_devices.success_count + 1 >= 3 THEN $5 ELSE admin_trusted_devices.expires_at END,
+         label = $2,
+         ip = $3,
+         last_login_at = $4`,
+      [deviceId, ua, ip, now, expiresAt]
+    );
+    setDeviceCookie(res, deviceId);
+  } else {
+    // Неверный пароль сбрасывает серию для этого устройства и снимает доверие
+    await pool.query(
+      `INSERT INTO admin_trusted_devices (device_id, success_count, trusted, label, ip, created_at, last_login_at, expires_at)
+       VALUES ($1, 0, 0, $2, $3, $4, $4, NULL)
+       ON CONFLICT (device_id) DO UPDATE SET success_count = 0, trusted = 0, expires_at = NULL, label = $2, ip = $3, last_login_at = $4`,
+      [deviceId, ua, ip, now]
+    );
   }
 
   if (!ok_) return err(res, 'Неверный пароль', 401);
@@ -764,8 +831,12 @@ app.post('/api/admin/login', loginLimiter, ah(async (req, res) => {
 // POST /api/admin/login-device — вход без пароля для доверенного устройства
 // (после 3 успешных входов подряд с одного браузера код больше не запрашивается,
 // доверие живёт TRUSTED_DEVICE_TTL_MS и продлевается при каждом использовании)
+// SECURITY FIX: deviceId теперь читаем ТОЛЬКО из httpOnly-cookie, которую
+// выставляет сам сервер при /api/admin/login. Тело запроса больше не
+// участвует — клиент физически не может подставить чужой/угаданный ID.
 app.post('/api/admin/login-device', loginLimiter, ah(async (req, res) => {
-  const { deviceId } = bodyOf(req);
+  const cookies = parseCookies(req);
+  const deviceId = cookies[DEVICE_COOKIE_NAME];
   if (!isStr(deviceId, 150) || !/^[a-zA-Z0-9_-]{8,150}$/.test(deviceId)) {
     return err(res, 'Устройство не распознано', 401);
   }
@@ -792,6 +863,7 @@ app.post('/api/admin/login-device', loginLimiter, ah(async (req, res) => {
     'UPDATE admin_trusted_devices SET last_login_at = $1, expires_at = $2, ip = $3 WHERE device_id = $4',
     [new Date().toISOString(), newExpiresAt, ip, deviceId]
   );
+  setDeviceCookie(res, deviceId); // продлеваем и cookie на клиенте
 
   await logVisitAndNotify(req, 'admin_login_ok', { ip, viaTrustedDevice: true });
 
