@@ -150,7 +150,7 @@ h1{
 
 /* MY ORDERS STATUS TRACKER */
 .my-orders{
-  margin:14px 24px 0;
+  margin:0 24px 8px;
   display:flex;
   flex-direction:column;
   gap:8px;
@@ -1844,14 +1844,14 @@ input, textarea{
 <body>
 <div class="frame" id="public-page">
 
-  <div class="my-orders" id="my-orders-block" style="display:none;"></div>
-
   <section class="hero reveal in">
     <span class="mark">Клуб доступа</span>
     <h1>Контент, который <span class="blackout" data-word="не выкладывают">■■■■■■■■■■■■■■</span> в общий доступ</h1>
     <p class="sub">Несколько уровней подписки. Каждый следующий открывает больше, чем предыдущий.</p>
     <p class="counter">Активных подписок: <b id="subs-counter">240</b></p>
   </section>
+
+  <div class="my-orders" id="my-orders-block" style="display:none;"></div>
 
   <div class="section-head reveal in" id="tiers">
     <h2>Уровни доступа</h2>
@@ -2172,34 +2172,18 @@ var API_BASE = 'https://sait-76t5.onrender.com';
 
 var adminToken = null; // хранится только в памяти вкладки
 
-// Устройство для входа в админку без пароля после 3 успешных входов подряд
-var ADMIN_DEVICE_KEY = 'admin_device_id_v1';
-function getOrCreateAdminDeviceId(){
-  var id = localStorage.getItem(ADMIN_DEVICE_KEY);
-  if(!id){
-    // Криптографически стойкий ID устройства: crypto.randomUUID() опирается на
-    // защищённый ГСЧ ОС, в отличие от Math.random() (который предсказуем и не
-    // годится для секретов, дающих доступ в админку без пароля).
-    if(window.crypto && window.crypto.randomUUID){
-      id = 'd' + window.crypto.randomUUID().replace(/-/g,'');
-    } else if(window.crypto && window.crypto.getRandomValues){
-      var bytes = new Uint8Array(24);
-      window.crypto.getRandomValues(bytes);
-      id = 'd' + Array.from(bytes).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
-    } else {
-      // Крайний резерв для очень старых браузеров без Web Crypto API
-      id = 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12) + Math.random().toString(36).slice(2, 12);
-    }
-    localStorage.setItem(ADMIN_DEVICE_KEY, id);
-  }
-  return id;
-}
-var adminDeviceId = getOrCreateAdminDeviceId();
+// SECURITY FIX: раньше ID "доверенного устройства" генерировался прямо в
+// браузере и хранился в localStorage — то есть был доступен любому JS на
+// странице (включая потенциальный XSS) и мог быть скопирован/подделан.
+// Теперь этот ID выдаёт и хранит ИСКЛЮЧИТЕЛЬНО сервер, в httpOnly-cookie,
+// которую JS прочитать не может в принципе. Клиенту достаточно всегда
+// слать credentials:'include' — cookie приложится к запросу браузером сам.
 
 function apiFetch(path, opts){
   opts = opts || {};
   opts.headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
   if(adminToken) opts.headers['Authorization'] = 'Bearer ' + adminToken;
+  opts.credentials = 'include'; // нужно для отправки/приёма httpOnly device-cookie с другого домена (API_BASE)
   return fetch(API_BASE + path, opts).then(function(res){
     return res.json().then(function(data){
       if(!res.ok || data.error) throw new Error(data.error || ('HTTP ' + res.status));
@@ -2407,7 +2391,7 @@ document.getElementById('bonus-save').onclick = function(){
 // без всплывающего окна. Ссылка настраивается в админке.
 document.getElementById('bonus-cta-btn').onclick = function(){
   trackClick('Нажал кнопку бонуса — переход по ссылке', 'бонус', bonus.link);
-  window.open(bonus.link || DEFAULT_BONUS.link, '_blank', 'noopener');
+  window.open(safeUrl(bonus.link || DEFAULT_BONUS.link), '_blank', 'noopener');
 };
 
 function cardChipsFromString(str){
@@ -2459,6 +2443,25 @@ function renderPublic(){
 function esc(s){
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
+// SECURITY: esc() только экранирует HTML-спецсимволы — этого НЕДОСТАТОЧНО для
+// вставки в href/window.open(), потому что "javascript:alert(1)" не содержит
+// ни одного из этих символов и спокойно пройдёт через esc(), но всё равно
+// выполнится как код при клике/открытии. Реквизиты (xRocket/CryptoBot) и
+// ссылка бонус-блока редактируются в админке и попадают на публичную
+// страницу — поэтому даже для доверенного админа стоит подстраховаться
+// (ошибка при вводе, скомпрометированный аккаунт и т.д.). safeUrl()
+// разрешает только http(s) и относительные ссылки, всё остальное — на '#'.
+function safeUrl(u){
+  var s = String(u||'').trim();
+  if(!s) return '#';
+  try{
+    var resolved = new URL(s, window.location.href);
+    if(resolved.protocol === 'http:' || resolved.protocol === 'https:'){
+      return resolved.href;
+    }
+  }catch(e){ /* некорректный URL — падаем на '#' ниже */ }
+  return '#';
+}
 function num(n){
   return Number(n).toLocaleString('ru-RU');
 }
@@ -2492,7 +2495,7 @@ function unlockBody(){
 document.getElementById('admin-trigger').onclick = function(){
   var trigger = this;
   trigger.style.pointerEvents = 'none';
-  apiFetch('/api/admin/login-device', { method: 'POST', body: JSON.stringify({ deviceId: adminDeviceId }) })
+  apiFetch('/api/admin/login-device', { method: 'POST', body: JSON.stringify({}) })
     .then(function(data){
       // Устройство доверено — входим без пароля
       adminToken = data.token;
@@ -2525,7 +2528,7 @@ function doLogin(){
   var errBox = document.getElementById('login-err');
   errBox.style.display = 'none';
   submitBtn.disabled = true;
-  apiFetch('/api/admin/login', { method: 'POST', body: JSON.stringify({ password: val, deviceId: adminDeviceId }) })
+  apiFetch('/api/admin/login', { method: 'POST', body: JSON.stringify({ password: val }) })
     .then(function(data){
       adminToken = data.token;
       document.getElementById('login-modal').classList.remove('open');
@@ -2876,7 +2879,6 @@ function renderTrustedDevices(devices){
     return;
   }
   list.innerHTML = devices.map(function(d){
-    var isThisDevice = d.device_id === adminDeviceId;
     var isTrusted = d.trusted === 1;
     var expired = isTrusted && d.expires_at && new Date(d.expires_at).getTime() < Date.now();
     var statusText = !isTrusted ? ('Вход без пароля: '+ (d.success_count||0) +'/3 подряд') :
@@ -2885,7 +2887,7 @@ function renderTrustedDevices(devices){
     var lastLogin = d.last_login_at ? new Date(d.last_login_at).toLocaleString('ru-RU') : '—';
     return '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;background:var(--panel);border:1px solid var(--line);border-radius:8px;">'+
       '<div style="min-width:0;">'+
-        '<div style="font-size:12.5px;font-weight:600;">'+ esc((d.label||'Неизвестное устройство').slice(0,60)) + (isThisDevice ? ' <span style="color:var(--red-bright)">(это устройство)</span>' : '') +'</div>'+
+        '<div style="font-size:12.5px;font-weight:600;">'+ esc((d.label||'Неизвестное устройство').slice(0,60)) +'</div>'+
         '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">'+ esc(statusText) +' · IP: '+ esc(d.ip||'—') +'</div>'+
         '<div style="font-size:10.5px;color:var(--text-dim);margin-top:1px;">Последний вход: '+ esc(lastLogin) +'</div>'+
       '</div>'+
@@ -3063,7 +3065,7 @@ function renderRequisites(){
           '<div class="req-card-bank">'+ esc(r.rubBank) +'</div>'+
           '<div class="req-card-hint">Переводить на номер карты</div>'+
         '</div>'+
-        '<div class="req-card-num js-copy" data-copy="'+ esc(r.rubCard) +'" title="Нажмите чтобы скопировать">'+ formatCardNum(r.rubCard) +'</div>'+
+        '<div class="req-card-num js-copy" data-copy="'+ esc(r.rubCard) +'" title="Нажмите чтобы скопировать">'+ esc(formatCardNum(r.rubCard)) +'</div>'+
       '</div>'+
     '</div>'+
     '<div class="req-section">'+
@@ -3084,7 +3086,7 @@ function renderRequisites(){
           '<div class="req-card-bank">'+ esc(r.uahBank) +'</div>'+
           '<div class="req-card-hint">Переводить на номер карты</div>'+
         '</div>'+
-        '<div class="req-card-num js-copy" data-copy="'+ esc(r.uahCard) +'" title="Нажмите чтобы скопировать">'+ formatCardNum(r.uahCard) +'</div>'+
+        '<div class="req-card-num js-copy" data-copy="'+ esc(r.uahCard) +'" title="Нажмите чтобы скопировать">'+ esc(formatCardNum(r.uahCard)) +'</div>'+
       '</div>'+
     '</div>'+
     '<div class="req-section">'+
@@ -3099,7 +3101,7 @@ function renderRequisites(){
   document.getElementById('req-crypto').innerHTML =
     '<div class="req-section">'+
       '<div class="req-label">xRocket</div>'+
-      '<a class="req-card" href="'+ esc(r.xrocketLink) +'" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;cursor:pointer;">'+
+      '<a class="req-card" href="'+ esc(safeUrl(r.xrocketLink)) +'" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;cursor:pointer;">'+
         '<div class="req-card-logo" style="background:#1c2733;">'+ ICONS.xrocket +'</div>'+
         '<div class="req-card-body">'+
           '<div class="req-card-bank">Оплата через xRocket-бота</div>'+
@@ -3109,7 +3111,7 @@ function renderRequisites(){
     '</div>'+
     '<div class="req-section">'+
       '<div class="req-label">Crypto Bot</div>'+
-      '<a class="req-card" href="'+ esc(r.cryptobotLink) +'" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;cursor:pointer;">'+
+      '<a class="req-card" href="'+ esc(safeUrl(r.cryptobotLink)) +'" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;cursor:pointer;">'+
         '<div class="req-card-logo" style="background:#1c2733;">'+ ICONS.cryptobot +'</div>'+
         '<div class="req-card-body">'+
           '<div class="req-card-bank">Оплата через @CryptoBot</div>'+
@@ -3565,6 +3567,12 @@ function formatCardNum(num){
   num = (num||'').replace(/\s+/g,'');
   return num.replace(/(.{4})/g,'$1 ').trim();
 }
+// SECURITY: formatCardNum() только группирует цифры пробелами, не экранирует
+// HTML. Раньше её результат вставлялся в innerHTML НАПРЯМУЮ (без esc()), а
+// сами номера карт редактируются в админке и показываются ВСЕМ посетителям
+// публичной страницы — то есть один вредоносный символ в номере карты стал
+// бы постоянной (stored) XSS для каждого посетителя сайта. Оборачиваем esc()
+// в месте вызова.
 
 function renderPayMethods(){
   var list = document.getElementById('pay-methods-list');
@@ -3993,7 +4001,7 @@ function getOrCreateClientId(){
 var supportClientId = getOrCreateClientId();
 
 // ============================================================
-// MY ORDERS — статус заявок текущего посетителя (вверху страницы)
+// MY ORDERS — статус заявок текущего посетителя (между "Активных подписок" и "Уровни доступа")
 // ============================================================
 var ORDER_STATUS_LABEL = { pending: 'На обработке', approved: 'Принят', rejected: 'Отклонён' };
 var myOrdersPollTimer = null;
