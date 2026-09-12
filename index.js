@@ -25,7 +25,7 @@ app.use(helmet({
   contentSecurityPolicy: false,
 }));
 
-app.use(express.json({ limit: '15mb' })); // файлы чеков идут как base64 в JSON
+app.use(express.json({ limit: '20mb' })); // файлы чеков и фото тарифов идут как base64 в JSON
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -153,6 +153,46 @@ function toNum(v, fallback = 0, min = 0, max = 1_000_000_000) {
   const n = Number(v);
   if (!Number.isFinite(n) || n < min || n > max) return fallback;
   return n;
+}
+
+// ── ФОТО ТАРИФОВ ─────────────────────────────────────────
+// SECURITY: фото хранятся как data:URL (base64) прямо в БД, как и чеки
+// заказов — тот же паттерн, что уже используется в проекте для orders.
+// Валидация здесь важна вдвойне, т.к. эти данные потом отдаются ВСЕМ
+// посетителям сайта (публичный GET /api/tiers), а не только админу.
+const TIER_PHOTO_ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const TIER_PHOTO_MAX_BYTES = 3_000_000; // ~3MB на файл после декодирования base64
+const TIER_PHOTOS_MAX_COUNT = 3;
+
+function isValidDataUrlImage(s) {
+  if (typeof s !== 'string' || s.length === 0) return false;
+  if (s.length > 5_000_000) return false; // строка целиком (base64 длиннее raw байт)
+  const m = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/]+={0,2})$/.exec(s);
+  if (!m) return false;
+  const mime = m[1];
+  const b64 = m[2];
+  if (!TIER_PHOTO_ALLOWED_TYPES.includes(mime)) return false;
+  // Приблизительный размер декодированных данных
+  const approxBytes = Math.floor(b64.length * 3 / 4);
+  if (approxBytes > TIER_PHOTO_MAX_BYTES) return false;
+  return true;
+}
+
+// Валидирует и обрезает массив фото тарифа. Возвращает { ok, photos, error }.
+function sanitizeTierPhotos(input) {
+  if (input === undefined) return { ok: true, photos: undefined };
+  if (!Array.isArray(input)) return { ok: false, error: 'Фото тарифа должны быть массивом' };
+  if (input.length > TIER_PHOTOS_MAX_COUNT) {
+    return { ok: false, error: `Можно добавить максимум ${TIER_PHOTOS_MAX_COUNT} фото` };
+  }
+  const photos = [];
+  for (const p of input) {
+    if (!isValidDataUrlImage(p)) {
+      return { ok: false, error: 'Недопустимый формат или слишком большой размер одного из фото (JPEG/PNG/WEBP, до 3МБ)' };
+    }
+    photos.push(p);
+  }
+  return { ok: true, photos };
 }
 
 // ── ПОЛУЧЕНИЕ IP ─────────────────────────────────────────
@@ -500,15 +540,20 @@ function requireAdmin(req, res, next) {
 
 // ── PUBLIC ROUTES ────────────────────────────────────────
 
+function parseTierRow(t) {
+  let features = [];
+  try { features = JSON.parse(t.features || '[]'); } catch { features = []; }
+  if (!Array.isArray(features)) features = [];
+  let photos = [];
+  try { photos = JSON.parse(t.photos || '[]'); } catch { photos = []; }
+  if (!Array.isArray(photos)) photos = [];
+  return { ...t, features, photos, highlight: t.highlight === 1 };
+}
+
 // GET /api/tiers
 app.get('/api/tiers', ah(async (req, res) => {
   const { rows } = await pool.query('SELECT * FROM tiers ORDER BY sort_order ASC');
-  const tiers = rows.map(t => {
-    let features = [];
-    try { features = JSON.parse(t.features || '[]'); } catch { features = []; }
-    if (!Array.isArray(features)) features = [];
-    return { ...t, features, highlight: t.highlight === 1 };
-  });
+  const tiers = rows.map(parseTierRow);
   ok(res, { tiers });
 }));
 
@@ -1032,14 +1077,7 @@ app.put('/api/admin/support/tickets/:id', requireAdmin, ah(async (req, res) => {
 
 app.get('/api/admin/tiers', requireAdmin, ah(async (req, res) => {
   const { rows } = await pool.query('SELECT * FROM tiers ORDER BY sort_order ASC');
-  ok(res, {
-    tiers: rows.map(t => {
-      let features = [];
-      try { features = JSON.parse(t.features || '[]'); } catch { features = []; }
-      if (!Array.isArray(features)) features = [];
-      return { ...t, features, highlight: t.highlight === 1 };
-    }),
-  });
+  ok(res, { tiers: rows.map(parseTierRow) });
 }));
 
 app.post('/api/admin/tiers', requireAdmin, ah(async (req, res) => {
@@ -1048,9 +1086,14 @@ app.post('/api/admin/tiers', requireAdmin, ah(async (req, res) => {
   const { rows: last } = await pool.query('SELECT MAX(sort_order) as m FROM tiers');
   const order = (last[0]?.m ?? 0) + 1;
   const features = Array.isArray(body.features) ? body.features.filter(f => typeof f === 'string').slice(0, 100) : [];
+
+  const photosResult = sanitizeTierPhotos(body.photos);
+  if (!photosResult.ok) return err(res, photosResult.error);
+  const photos = photosResult.photos || [];
+
   await pool.query(
-    `INSERT INTO tiers (id, name, flag, highlight, price_rub, price_usdt, price_uah, price_stars, period, description, features, cta_text, sort_order)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+    `INSERT INTO tiers (id, name, flag, highlight, price_rub, price_usdt, price_uah, price_stars, period, description, features, cta_text, sort_order, photos)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
     [id,
      isStr(body.name, 200) ? body.name : '',
      isStr(body.flag, 100) ? body.flag : '',
@@ -1060,7 +1103,8 @@ app.post('/api/admin/tiers', requireAdmin, ah(async (req, res) => {
      isStr(body.description, 2000) ? body.description : '',
      JSON.stringify(features),
      isStr(body.ctaText, 100) ? body.ctaText : 'Оформить',
-     order]
+     order,
+     JSON.stringify(photos)]
   );
   ok(res, { id });
 }));
@@ -1069,18 +1113,41 @@ app.put('/api/admin/tiers/:id', requireAdmin, ah(async (req, res) => {
   if (!isStr(req.params.id, 100)) return err(res, 'Не найдено', 404);
   const body = bodyOf(req);
   const features = Array.isArray(body.features) ? body.features.filter(f => typeof f === 'string').slice(0, 100) : [];
-  await pool.query(
-    `UPDATE tiers SET name=$1, flag=$2, highlight=$3, price_rub=$4, price_usdt=$5, price_uah=$6, price_stars=$7, period=$8, description=$9, features=$10, cta_text=$11 WHERE id=$12`,
-    [isStr(body.name, 200) ? body.name : '',
-     isStr(body.flag, 100) ? body.flag : '',
-     body.highlight ? 1 : 0,
-     toNum(body.priceRub, 0), toNum(body.priceUsdt, 0), toNum(body.priceUah, 0), toNum(body.priceStars, 0),
-     isStr(body.period, 50) ? body.period : '/ месяц',
-     isStr(body.description, 2000) ? body.description : '',
-     JSON.stringify(features),
-     isStr(body.ctaText, 100) ? body.ctaText : 'Оформить',
-     req.params.id]
-  );
+
+  const photosResult = sanitizeTierPhotos(body.photos);
+  if (!photosResult.ok) return err(res, photosResult.error);
+  // BUG FIX: photos не передан в body -> не трогаем существующие фото (частичное обновление),
+  // передан пустой массив -> явно очищаем.
+  const keepExistingPhotos = photosResult.photos === undefined;
+
+  if (keepExistingPhotos) {
+    await pool.query(
+      `UPDATE tiers SET name=$1, flag=$2, highlight=$3, price_rub=$4, price_usdt=$5, price_uah=$6, price_stars=$7, period=$8, description=$9, features=$10, cta_text=$11 WHERE id=$12`,
+      [isStr(body.name, 200) ? body.name : '',
+       isStr(body.flag, 100) ? body.flag : '',
+       body.highlight ? 1 : 0,
+       toNum(body.priceRub, 0), toNum(body.priceUsdt, 0), toNum(body.priceUah, 0), toNum(body.priceStars, 0),
+       isStr(body.period, 50) ? body.period : '/ месяц',
+       isStr(body.description, 2000) ? body.description : '',
+       JSON.stringify(features),
+       isStr(body.ctaText, 100) ? body.ctaText : 'Оформить',
+       req.params.id]
+    );
+  } else {
+    await pool.query(
+      `UPDATE tiers SET name=$1, flag=$2, highlight=$3, price_rub=$4, price_usdt=$5, price_uah=$6, price_stars=$7, period=$8, description=$9, features=$10, cta_text=$11, photos=$12 WHERE id=$13`,
+      [isStr(body.name, 200) ? body.name : '',
+       isStr(body.flag, 100) ? body.flag : '',
+       body.highlight ? 1 : 0,
+       toNum(body.priceRub, 0), toNum(body.priceUsdt, 0), toNum(body.priceUah, 0), toNum(body.priceStars, 0),
+       isStr(body.period, 50) ? body.period : '/ месяц',
+       isStr(body.description, 2000) ? body.description : '',
+       JSON.stringify(features),
+       isStr(body.ctaText, 100) ? body.ctaText : 'Оформить',
+       JSON.stringify(photosResult.photos),
+       req.params.id]
+    );
+  }
   ok(res);
 }));
 
@@ -1108,6 +1175,116 @@ app.put('/api/admin/tiers/:id/move', requireAdmin, ah(async (req, res) => {
 
   await pool.query('UPDATE tiers SET sort_order=$1 WHERE id=$2', [neighbor.sort_order, current.id]);
   await pool.query('UPDATE tiers SET sort_order=$1 WHERE id=$2', [current.sort_order, neighbor.id]);
+  ok(res);
+}));
+
+// ── ОТЗЫВЫ ───────────────────────────────────────────────
+// Полностью управляются админом: он может "подделать" отзыв — задать любое
+// имя и текст — удалить любой отзыв и отредактировать дату публикации.
+// Публичный роут отдаёт только безопасные для показа поля.
+
+const REVIEW_RATING_MIN = 1;
+const REVIEW_RATING_MAX = 5;
+
+function isValidIsoDate(s) {
+  if (!isStr(s, 40)) return false;
+  const d = new Date(s);
+  return !Number.isNaN(d.getTime());
+}
+
+function parseReviewRow(r) {
+  return {
+    id: r.id,
+    author: r.author,
+    text: r.text,
+    rating: r.rating,
+    avatar: r.avatar || '',
+    createdAt: r.created_at,
+  };
+}
+
+// GET /api/reviews — публичный список отзывов, новые сверху по sort_order
+app.get('/api/reviews', ah(async (req, res) => {
+  const { rows } = await pool.query('SELECT * FROM reviews ORDER BY sort_order ASC, created_at DESC');
+  ok(res, { reviews: rows.map(parseReviewRow) });
+}));
+
+// GET /api/admin/reviews
+app.get('/api/admin/reviews', requireAdmin, ah(async (req, res) => {
+  const { rows } = await pool.query('SELECT * FROM reviews ORDER BY sort_order ASC, created_at DESC');
+  ok(res, { reviews: rows.map(parseReviewRow) });
+}));
+
+// POST /api/admin/reviews — создать (в т.ч. полностью "с нуля", как обычный отзыв от лица кого угодно)
+app.post('/api/admin/reviews', requireAdmin, ah(async (req, res) => {
+  const body = bodyOf(req);
+  if (!isStr(body.author, 100)) return err(res, 'Укажите имя автора отзыва (до 100 символов)');
+  if (!isStr(body.text, 3000)) return err(res, 'Укажите текст отзыва (до 3000 символов)');
+
+  const rating = toNum(body.rating, 5, REVIEW_RATING_MIN, REVIEW_RATING_MAX);
+  const avatar = isStr(body.avatar, 4) ? body.avatar : (isStr(body.author, 100) ? body.author.trim()[0] || '' : '');
+  const createdAt = isValidIsoDate(body.createdAt) ? new Date(body.createdAt).toISOString() : new Date().toISOString();
+
+  const id = crypto.randomUUID();
+  const { rows: last } = await pool.query('SELECT MAX(sort_order) as m FROM reviews');
+  const order = (last[0]?.m ?? 0) + 1;
+
+  await pool.query(
+    `INSERT INTO reviews (id, author, text, rating, avatar, sort_order, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+    [id, body.author.trim(), body.text.trim(), rating, avatar, order, createdAt]
+  );
+  ok(res, { id });
+}));
+
+// PUT /api/admin/reviews/:id — редактировать (включая дату создания)
+app.put('/api/admin/reviews/:id', requireAdmin, ah(async (req, res) => {
+  if (!isStr(req.params.id, 100)) return err(res, 'Не найдено', 404);
+  const body = bodyOf(req);
+  const { rows: existingRows } = await pool.query('SELECT * FROM reviews WHERE id = $1', [req.params.id]);
+  const existing = existingRows[0];
+  if (!existing) return err(res, 'Отзыв не найден', 404);
+
+  const author = isStr(body.author, 100) ? body.author.trim() : existing.author;
+  const text = isStr(body.text, 3000) ? body.text.trim() : existing.text;
+  const rating = body.rating !== undefined ? toNum(body.rating, existing.rating, REVIEW_RATING_MIN, REVIEW_RATING_MAX) : existing.rating;
+  const avatar = isStr(body.avatar, 4) ? body.avatar : existing.avatar;
+  const createdAt = body.createdAt !== undefined
+    ? (isValidIsoDate(body.createdAt) ? new Date(body.createdAt).toISOString() : existing.created_at)
+    : existing.created_at;
+
+  await pool.query(
+    `UPDATE reviews SET author=$1, text=$2, rating=$3, avatar=$4, created_at=$5 WHERE id=$6`,
+    [author, text, rating, avatar, createdAt, req.params.id]
+  );
+  ok(res);
+}));
+
+// DELETE /api/admin/reviews/:id
+app.delete('/api/admin/reviews/:id', requireAdmin, ah(async (req, res) => {
+  if (!isStr(req.params.id, 100)) return err(res, 'Не найдено', 404);
+  await pool.query('DELETE FROM reviews WHERE id = $1', [req.params.id]);
+  ok(res);
+}));
+
+// PUT /api/admin/reviews/:id/move — изменить порядок отображения (up/down)
+app.put('/api/admin/reviews/:id/move', requireAdmin, ah(async (req, res) => {
+  if (!isStr(req.params.id, 100)) return err(res, 'Не найдено', 404);
+  const { direction } = bodyOf(req);
+  if (direction !== 'up' && direction !== 'down') return err(res, 'Некорректное направление');
+
+  const { rows: cur } = await pool.query('SELECT id, sort_order FROM reviews WHERE id = $1', [req.params.id]);
+  const current = cur[0];
+  if (!current) return err(res, 'Не найдено', 404);
+
+  const neighborQuery = direction === 'up'
+    ? 'SELECT id, sort_order FROM reviews WHERE sort_order < $1 ORDER BY sort_order DESC LIMIT 1'
+    : 'SELECT id, sort_order FROM reviews WHERE sort_order > $1 ORDER BY sort_order ASC LIMIT 1';
+  const { rows: nb } = await pool.query(neighborQuery, [current.sort_order]);
+  const neighbor = nb[0];
+  if (!neighbor) return ok(res);
+
+  await pool.query('UPDATE reviews SET sort_order=$1 WHERE id=$2', [neighbor.sort_order, current.id]);
+  await pool.query('UPDATE reviews SET sort_order=$1 WHERE id=$2', [current.sort_order, neighbor.id]);
   ok(res);
 }));
 
@@ -1399,6 +1576,23 @@ async function runMigrations() {
     `INSERT INTO settings (key, value) VALUES ('subs_counter', $1) ON CONFLICT (key) DO NOTHING`,
     [String(SUBS_COUNTER_BASE)]
   );
+
+  // BUG FIX: колонка с фото тарифов (для старых БД без неё)
+  await pool.query(`ALTER TABLE tiers ADD COLUMN IF NOT EXISTS photos TEXT DEFAULT '[]';`).catch(() => {});
+
+  // Таблица отзывов (для старых БД, где её ещё нет)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS reviews (
+      id          TEXT PRIMARY KEY,
+      author      TEXT NOT NULL,
+      text        TEXT NOT NULL,
+      rating      INTEGER DEFAULT 5,
+      avatar      TEXT DEFAULT '',
+      sort_order  INTEGER DEFAULT 0,
+      created_at  TEXT NOT NULL
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_reviews_order ON reviews(sort_order)`);
 
   console.log('✅ Миграции выполнены.');
 }
