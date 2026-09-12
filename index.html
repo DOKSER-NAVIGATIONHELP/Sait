@@ -376,6 +376,33 @@ h1{
   transform:translateY(-2px) scale(1.01);
 }
 
+/* TIER PHOTOS */
+.tier-photos{
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  gap:8px;
+  margin-bottom:16px;
+}
+.tier-photos.count-1{grid-template-columns:1fr;}
+.tier-photos.count-2{grid-template-columns:repeat(2, 1fr);}
+.tier-photo{
+  position:relative;
+  aspect-ratio:1/1;
+  border-radius:10px;
+  overflow:hidden;
+  border:1px solid var(--line);
+  background:#0A0707;
+  cursor:pointer;
+  padding:0;
+}
+.tier-photo img{
+  width:100%; height:100%;
+  object-fit:cover;
+  display:block;
+  transition:transform .35s ease;
+}
+.tier-photo:hover img{ transform:scale(1.06); }
+
 /* RAIL */
 .rail{
   margin:6px 24px 0;
@@ -472,6 +499,69 @@ h1{
   transition:filter .2s ease, transform .2s ease;
 }
 .bonus-cta:hover{ filter:brightness(1.1); transform:translateY(-2px); }
+
+/* REVIEWS */
+.reviews{
+  padding:0 24px 10px;
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+.review-card{
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:var(--panel);
+  padding:18px 20px;
+  transition:border-color .25s ease, transform .25s ease;
+}
+.review-card:hover{ border-color:var(--red-dim); transform:translateY(-2px); }
+.review-top{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin-bottom:10px;
+}
+.review-avatar{
+  width:38px; height:38px;
+  border-radius:50%;
+  flex-shrink:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-family:var(--font-display);
+  font-weight:700;
+  font-size:14px;
+  color:var(--red-bright);
+  background:rgba(92,26,22,.35);
+  border:1px solid var(--red-dim);
+  text-transform:uppercase;
+}
+.review-meta{flex:1; min-width:0;}
+.review-author{
+  font-family:var(--font-display);
+  font-weight:700;
+  font-size:13.5px;
+  margin-bottom:2px;
+}
+.review-date{font-size:11px; color:var(--text-dim);}
+.review-stars{
+  font-size:12px;
+  letter-spacing:1px;
+  color:var(--red-bright);
+  white-space:nowrap;
+}
+.review-text{
+  font-size:13.5px;
+  color:var(--text);
+  line-height:1.6;
+  margin:0;
+}
+.reviews-empty{
+  text-align:center;
+  font-size:13px;
+  color:var(--text-dim);
+  padding:20px;
+}
 
 footer{
   padding:44px 24px 50px;
@@ -1372,6 +1462,78 @@ input, textarea{
   accent-color:var(--red);
   cursor:pointer;
 }
+
+/* PHOTO UPLOADER (tier editor) */
+.photo-uploader{
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  gap:10px;
+}
+.photo-slot{
+  position:relative;
+  aspect-ratio:1/1;
+  border-radius:10px;
+  border:1px dashed var(--line);
+  background:#050303;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.photo-slot.filled{border-style:solid; border-color:var(--line);}
+.photo-slot img{width:100%; height:100%; object-fit:cover; display:block;}
+.photo-slot-add{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  width:100%; height:100%;
+  background:none;
+  border:none;
+  color:var(--text-dim);
+  cursor:pointer;
+  font-size:11px;
+  font-family:var(--font-body);
+  transition:color .2s;
+}
+.photo-slot-add:hover{color:var(--red-bright);}
+.photo-slot-add svg{opacity:.7;}
+.photo-slot-remove{
+  position:absolute;
+  top:5px; right:5px;
+  width:24px; height:24px;
+  border-radius:50%;
+  background:rgba(5,3,3,.85);
+  border:1px solid var(--line);
+  color:var(--text);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  font-size:13px;
+  line-height:1;
+}
+.photo-slot-remove:hover{border-color:#c13c3c; color:#e15050;}
+.photo-hint{font-size:11.5px; color:var(--text-dim); line-height:1.5; margin-top:2px;}
+
+/* ADMIN REVIEWS LIST */
+.admin-review-item{
+  background:#050303;
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:14px 16px;
+  display:flex;
+  gap:12px;
+  margin-bottom:10px;
+}
+.admin-review-item-body{flex:1; min-width:0;}
+.admin-review-item-top{display:flex; align-items:center; gap:8px; margin-bottom:4px; flex-wrap:wrap;}
+.admin-review-item-author{font-weight:700; font-size:13.5px;}
+.admin-review-item-date{font-size:11px; color:var(--text-dim);}
+.admin-review-item-stars{font-size:11px; color:var(--red-bright); letter-spacing:1px;}
+.admin-review-item-text{font-size:12.5px; color:var(--text-dim); line-height:1.5; white-space:pre-wrap;}
+.admin-review-item-actions{display:flex; flex-direction:column; gap:8px; flex-shrink:0;}
 .btn-sm{
   padding:10px 16px;
   font-size:12px;
@@ -1888,6 +2050,13 @@ input, textarea{
   <div class="rail"><div class="rail-fill"></div></div>
   <div class="rail-caption"><span>меньше доступа</span><span>полный доступ</span></div>
 
+  <div class="section-head reveal in" id="reviews-section-head" style="display:none;">
+    <h2>Отзывы</h2>
+    <p>Что говорят те, кто уже оформил подписку.</p>
+  </div>
+
+  <div class="reviews" id="reviews-container"></div>
+
   <div class="bonus reveal in" id="bonus-block">
     <span class="tag">Бонус</span>
     <h3 id="bonus-title">Получить 5 гигабайт бесплатно!</h3>
@@ -2037,6 +2206,7 @@ input, textarea{
       <button class="admin-tab" data-tab="orders">Заявки<span class="badge-count" id="orders-badge" style="display:none">0</span></button>
       <button class="admin-tab" data-tab="requisites">Реквизиты</button>
       <button class="admin-tab" data-tab="bonus">Бонус</button>
+      <button class="admin-tab" data-tab="reviews">Отзывы</button>
       <button class="admin-tab" data-tab="settings">Настройки</button>
       <button class="admin-tab" data-tab="logs">📋 Логи<span class="badge-count" id="logs-badge" style="display:none">0</span></button>
     </div>
@@ -2128,6 +2298,26 @@ input, textarea{
           <button class="btn-sm red" id="bonus-save">Сохранить</button>
         </div>
       </div>
+    </div>
+
+    <!-- TAB: REVIEWS -->
+    <div id="tab-reviews" style="display:none">
+      <div class="section-label" style="margin-bottom:12px">Добавить отзыв</div>
+      <div class="tier-editor" style="margin-bottom:20px">
+        <div class="field"><label>Имя автора</label><input type="text" id="rv-author" placeholder="Например: Александр" maxlength="100"></div>
+        <div class="field"><label>Текст отзыва</label><textarea id="rv-text" placeholder="Текст отзыва..." maxlength="3000"></textarea></div>
+        <div class="price-grid">
+          <div class="field"><label>Оценка (1–5)</label><input type="number" id="rv-rating" min="1" max="5" value="5"></div>
+          <div class="field"><label>Дата публикации</label><input type="datetime-local" id="rv-date"></div>
+        </div>
+        <div class="err" id="rv-err" style="display:none"></div>
+        <div class="row-btns">
+          <button class="btn-sm red" id="rv-save">Добавить отзыв</button>
+        </div>
+      </div>
+      <div class="divider" style="margin-bottom:16px"></div>
+      <div class="section-label" style="margin-bottom:12px">Все отзывы</div>
+      <div id="admin-reviews-list"></div>
     </div>
 
     <!-- TAB: LOGS -->
@@ -2222,6 +2412,9 @@ function apiFetch(path, opts){
 // ============================================================
 var STORAGE_KEY = 'tiers_data_v1';
 var PASS_KEY    = 'tiers_admin_pass';
+// Ограничения загрузки фото тарифа — держим в синхроне с бэкендом
+// (см. TIER_PHOTO_ALLOWED_TYPES / TIER_PHOTOS_MAX_COUNT в index.js).
+var TIER_PHOTOS_MAX = 3;
 
 var DEFAULT_TIERS = [
   {
@@ -2286,7 +2479,8 @@ function tierFromApi(t){
     desc: t.description || '',
     features: t.features || [],
     ctaText: t.cta_text || 'Оформить',
-    ctaLink: '#'
+    ctaLink: '#',
+    photos: Array.isArray(t.photos) ? t.photos : []
   };
 }
 
@@ -2395,6 +2589,75 @@ function fillBonusForm(){
   document.getElementById('bonus-link-input').value = bonus.link || DEFAULT_BONUS.link;
 }
 
+// ============================================================
+// REVIEWS DATA LAYER
+// ============================================================
+var reviews = [];
+
+function reviewFromApi(r){
+  return {
+    id: r.id,
+    author: r.author || '',
+    text: r.text || '',
+    rating: r.rating || 5,
+    avatar: r.avatar || (r.author ? r.author.trim()[0] : ''),
+    createdAt: r.createdAt || r.created_at || ''
+  };
+}
+
+// Публичная страница — отзывы без авторизации
+function fetchReviewsFromApi(){
+  return apiFetch('/api/reviews').then(function(data){
+    return (data.reviews || []).map(reviewFromApi);
+  });
+}
+// Админка
+function fetchReviewsFromApiAdmin(){
+  return apiFetch('/api/admin/reviews').then(function(data){
+    return (data.reviews || []).map(reviewFromApi);
+  });
+}
+
+function formatReviewDate(iso){
+  if(!iso) return '';
+  var d = new Date(iso);
+  if(isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('ru-RU', { day:'numeric', month:'long', year:'numeric' });
+}
+
+function starsHtml(rating){
+  var r = Math.max(1, Math.min(5, Math.round(Number(rating)||5)));
+  var out = '';
+  for(var i=1;i<=5;i++){ out += (i<=r) ? '★' : '☆'; }
+  return out;
+}
+
+function renderReviewsPublic(){
+  var head = document.getElementById('reviews-section-head');
+  var container = document.getElementById('reviews-container');
+  container.innerHTML = '';
+  if(!reviews.length){
+    head.style.display = 'none';
+    return;
+  }
+  head.style.display = '';
+  reviews.forEach(function(r){
+    var card = document.createElement('div');
+    card.className = 'review-card reveal in';
+    card.innerHTML =
+      '<div class="review-top">'+
+        '<div class="review-avatar">'+ esc((r.avatar||r.author||'?').trim()[0] || '?') +'</div>'+
+        '<div class="review-meta">'+
+          '<div class="review-author">'+ esc(r.author) +'</div>'+
+          '<div class="review-date">'+ esc(formatReviewDate(r.createdAt)) +'</div>'+
+        '</div>'+
+        '<div class="review-stars">'+ starsHtml(r.rating) +'</div>'+
+      '</div>'+
+      '<p class="review-text">'+ esc(r.text) +'</p>';
+    container.appendChild(card);
+  });
+}
+
 document.getElementById('bonus-save').onclick = function(){
   var btn = this;
   var next = {
@@ -2417,6 +2680,170 @@ document.getElementById('bonus-save').onclick = function(){
 document.getElementById('bonus-cta-btn').onclick = function(){
   trackClick('Нажал кнопку бонуса — переход по ссылке', 'бонус', bonus.link);
   window.open(safeUrl(bonus.link || DEFAULT_BONUS.link), '_blank', 'noopener');
+};
+
+// ============================================================
+// ADMIN — REVIEWS TAB
+// ============================================================
+var adminReviews = [];
+var editingReviewId = null; // null = форма работает в режиме "создать новый"
+
+// datetime-local ждёт формат YYYY-MM-DDTHH:mm (локальное время без секунд/зоны)
+function isoToDatetimeLocal(iso){
+  var d = iso ? new Date(iso) : new Date();
+  if(isNaN(d.getTime())) d = new Date();
+  var pad = function(n){ return String(n).padStart(2,'0'); };
+  return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+}
+function datetimeLocalToIso(val){
+  if(!val) return new Date().toISOString();
+  var d = new Date(val); // браузер интерпретирует datetime-local как локальное время
+  if(isNaN(d.getTime())) return new Date().toISOString();
+  return d.toISOString();
+}
+
+function resetReviewForm(){
+  editingReviewId = null;
+  document.getElementById('rv-author').value = '';
+  document.getElementById('rv-text').value = '';
+  document.getElementById('rv-rating').value = '5';
+  document.getElementById('rv-date').value = isoToDatetimeLocal(new Date().toISOString());
+  document.getElementById('rv-err').style.display = 'none';
+  document.getElementById('rv-save').textContent = 'Добавить отзыв';
+}
+
+function loadAdminReviews(){
+  resetReviewForm();
+  var list = document.getElementById('admin-reviews-list');
+  list.innerHTML = '<div class="order-empty">Загрузка отзывов…</div>';
+  fetchReviewsFromApiAdmin().then(function(r){
+    adminReviews = r;
+    renderAdminReviewsList();
+  }).catch(function(e){
+    list.innerHTML = '<div class="order-empty">Не удалось загрузить: ' + esc(e.message) + '</div>';
+  });
+}
+
+function renderAdminReviewsList(){
+  var list = document.getElementById('admin-reviews-list');
+  list.innerHTML = '';
+  if(!adminReviews.length){
+    list.innerHTML = '<div class="order-empty">Отзывов пока нет</div>';
+    return;
+  }
+  adminReviews.forEach(function(r, idx){
+    var item = document.createElement('div');
+    item.className = 'admin-review-item';
+    item.innerHTML =
+      '<div class="admin-review-item-body">'+
+        '<div class="admin-review-item-top">'+
+          '<span class="admin-review-item-author">'+ esc(r.author) +'</span>'+
+          '<span class="admin-review-item-stars">'+ starsHtml(r.rating) +'</span>'+
+          '<span class="admin-review-item-date">'+ esc(formatReviewDate(r.createdAt)) +'</span>'+
+        '</div>'+
+        '<div class="admin-review-item-text">'+ esc(r.text) +'</div>'+
+      '</div>'+
+      '<div class="admin-review-item-actions">'+
+        '<button class="icon-btn move" data-move="-1" data-idx="'+idx+'" title="Выше">↑</button>'+
+        '<button class="icon-btn move" data-move="1" data-idx="'+idx+'" title="Ниже">↓</button>'+
+        '<button class="icon-btn" data-edit="'+esc(r.id)+'" title="Редактировать">✎</button>'+
+        '<button class="icon-btn danger" data-del="'+esc(r.id)+'" title="Удалить">✕</button>'+
+      '</div>';
+    list.appendChild(item);
+  });
+
+  list.querySelectorAll('[data-edit]').forEach(function(btn){
+    btn.onclick = function(){ startEditReview(btn.getAttribute('data-edit')); };
+  });
+  list.querySelectorAll('[data-del]').forEach(function(btn){
+    btn.onclick = function(){ deleteReview(btn.getAttribute('data-del')); };
+  });
+  list.querySelectorAll('[data-move]').forEach(function(btn){
+    btn.onclick = function(){
+      var idx = parseInt(btn.getAttribute('data-idx'), 10);
+      var dir = parseInt(btn.getAttribute('data-move'), 10);
+      moveReview(idx, dir);
+    };
+  });
+}
+
+function startEditReview(id){
+  var r = adminReviews.find(function(x){ return x.id === id; });
+  if(!r) return;
+  editingReviewId = id;
+  document.getElementById('rv-author').value = r.author;
+  document.getElementById('rv-text').value = r.text;
+  document.getElementById('rv-rating').value = String(r.rating || 5);
+  document.getElementById('rv-date').value = isoToDatetimeLocal(r.createdAt);
+  document.getElementById('rv-err').style.display = 'none';
+  document.getElementById('rv-save').textContent = 'Сохранить изменения';
+  document.getElementById('rv-author').scrollIntoView({behavior:'smooth', block:'center'});
+}
+
+function deleteReview(id){
+  if(!confirm('Удалить отзыв?')) return;
+  apiFetch('/api/admin/reviews/' + id, { method: 'DELETE' }).then(function(){
+    adminReviews = adminReviews.filter(function(r){ return r.id !== id; });
+    renderAdminReviewsList();
+    if(editingReviewId === id) resetReviewForm();
+    showToast('Отзыв удалён');
+    // Обновляем и публичный список, если он уже был загружен
+    fetchReviewsFromApi().then(function(r){ reviews = r; renderReviewsPublic(); }).catch(function(){});
+  }).catch(function(e){ showToast('Ошибка удаления: ' + e.message); });
+}
+
+function moveReview(idx, dir){
+  var newIdx = idx + dir;
+  if(newIdx < 0 || newIdx >= adminReviews.length) return;
+  var id = adminReviews[idx].id;
+  var direction = dir < 0 ? 'up' : 'down';
+  apiFetch('/api/admin/reviews/' + id + '/move', { method: 'PUT', body: JSON.stringify({ direction: direction }) })
+    .then(function(){ return fetchReviewsFromApiAdmin(); })
+    .then(function(r){
+      adminReviews = r;
+      renderAdminReviewsList();
+      return fetchReviewsFromApi();
+    }).then(function(r){ reviews = r; renderReviewsPublic(); })
+    .catch(function(e){ showToast('Ошибка: ' + e.message); });
+}
+
+document.getElementById('rv-save').onclick = function(){
+  var btn = this;
+  var errBox = document.getElementById('rv-err');
+  errBox.style.display = 'none';
+
+  var author = document.getElementById('rv-author').value.trim();
+  var text = document.getElementById('rv-text').value.trim();
+  var rating = parseInt(document.getElementById('rv-rating').value, 10) || 5;
+  rating = Math.max(1, Math.min(5, rating));
+  var dateVal = document.getElementById('rv-date').value;
+  var createdAt = datetimeLocalToIso(dateVal);
+
+  if(!author){ errBox.textContent = 'Укажите имя автора'; errBox.style.display = 'block'; return; }
+  if(!text){ errBox.textContent = 'Укажите текст отзыва'; errBox.style.display = 'block'; return; }
+
+  var body = { author: author, text: text, rating: rating, createdAt: createdAt };
+  btn.disabled = true;
+
+  var req = editingReviewId
+    ? apiFetch('/api/admin/reviews/' + editingReviewId, { method: 'PUT', body: JSON.stringify(body) })
+    : apiFetch('/api/admin/reviews', { method: 'POST', body: JSON.stringify(body) });
+
+  req.then(function(){
+    showToast(editingReviewId ? 'Отзыв обновлён ✓' : 'Отзыв добавлен ✓');
+    resetReviewForm();
+    return fetchReviewsFromApiAdmin();
+  }).then(function(r){
+    adminReviews = r;
+    renderAdminReviewsList();
+    return fetchReviewsFromApi();
+  }).then(function(r){
+    reviews = r;
+    renderReviewsPublic();
+  }).catch(function(e){
+    errBox.textContent = 'Ошибка: ' + e.message;
+    errBox.style.display = 'block';
+  }).finally(function(){ btn.disabled = false; });
 };
 
 function cardChipsFromString(str){
@@ -2444,6 +2871,17 @@ function renderPublic(){
     if(t.priceUsdt) altPrices.push('<span class="tier-price-alt">$'+ t.priceUsdt +' USDT</span>');
     if(t.priceUah)  altPrices.push('<span class="tier-price-alt">₴'+ t.priceUah +'</span>');
     if(t.priceStars) altPrices.push('<span class="tier-price-alt">⭐ '+ t.priceStars +'</span>');
+
+    var photos = Array.isArray(t.photos) ? t.photos.filter(function(p){ return typeof p === 'string' && p.indexOf('data:image/') === 0; }).slice(0, TIER_PHOTOS_MAX) : [];
+    var photosHtml = '';
+    if(photos.length){
+      photosHtml = '<div class="tier-photos count-'+photos.length+'">' + photos.map(function(src, i){
+        // SECURITY: esc() тоже применяем здесь как доп. защита при вставке в атрибут через innerHTML,
+        // хотя формат data:URL уже проверен на сервере (isValidDataUrlImage).
+        return '<button type="button" class="tier-photo js-tier-photo" data-src="'+ esc(src) +'"><img src="'+ esc(src) +'" alt="Фото тарифа '+ esc(t.name) +' '+(i+1)+'" loading="lazy"></button>';
+      }).join('') + '</div>';
+    }
+
     var article = document.createElement('article');
     article.className = 'tier reveal' + (t.highlight ? ' highlight' : '');
     article.innerHTML =
@@ -2453,6 +2891,7 @@ function renderPublic(){
           (t.flag ? '<div class="tier-flag">'+ esc(t.flag) +'</div>' : '')+
         '</div>'+
       '</div>'+
+      photosHtml +
       '<div class="tier-prices">'+
         '<div class="tier-price-main"><span class="amount">₽'+ num(t.priceRub) +'</span><span class="period">'+ esc(t.period||'/ месяц') +'</span></div>'+
         (altPrices.length ? '<div class="tier-price-alts">'+ altPrices.join('') +'</div>' : '')+
@@ -2462,6 +2901,17 @@ function renderPublic(){
       '<button class="tier-cta js-open-pay" data-name="'+ esc(t.name) +'" data-rub="'+ (t.priceRub||0) +'" data-usdt="'+ (t.priceUsdt||0) +'" data-uah="'+ (t.priceUah||0) +'" data-stars="'+ (t.priceStars||0) +'">'+ esc(t.ctaText||'Оформить') +'</button>';
     container.appendChild(article);
     setTimeout(function(el){ el.classList.add('in'); }, 50, article);
+  });
+
+  // Клик по фото тарифа — открываем в общем лайтбоксе (без сети, т.к. это уже data:URL)
+  container.querySelectorAll('.js-tier-photo').forEach(function(btn){
+    btn.onclick = function(){
+      var src = btn.getAttribute('data-src');
+      if(!src || src.indexOf('data:image/') !== 0) return; // защита от подмены атрибута через DOM-инспектор
+      document.getElementById('lightbox-img').src = src;
+      document.getElementById('lightbox-overlay').classList.add('open');
+      lockBody();
+    };
   });
 }
 
@@ -2611,6 +3061,7 @@ function switchTab(tab){
   document.getElementById('tab-orders').style.display = tab==='orders'   ? '' : 'none';
   document.getElementById('tab-requisites').style.display = tab==='requisites' ? '' : 'none';
   document.getElementById('tab-bonus').style.display = tab==='bonus' ? '' : 'none';
+  document.getElementById('tab-reviews').style.display = tab==='reviews' ? '' : 'none';
   document.getElementById('tab-support').style.display = tab==='support' ? '' : 'none';
   document.getElementById('tab-settings').style.display = tab==='settings' ? '' : 'none';
   document.getElementById('tab-logs').style.display   = tab==='logs'     ? '' : 'none';
@@ -2619,6 +3070,7 @@ function switchTab(tab){
   if(tab === 'orders') renderOrdersList();
   if(tab === 'requisites') fillRequisitesForm();
   if(tab === 'bonus') fillBonusForm();
+  if(tab === 'reviews') loadAdminReviews();
   if(tab === 'support') refreshSupportTickets();
   if(tab === 'logs') refreshLogsFromApi();
   if(tab === 'settings') refreshTrustedDevices();
@@ -2738,9 +3190,52 @@ function moveTier(idx, dir){
 // ============================================================
 // TIER FORM BUILDER
 // ============================================================
+// Ограничения загрузки фото тарифа — держим в синхроне с бэкендом
+// (см. TIER_PHOTO_ALLOWED_TYPES / TIER_PHOTOS_MAX_COUNT в index.js).
+var TIER_PHOTO_ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+var TIER_PHOTO_MAX_SOURCE_BYTES = 15 * 1024 * 1024; // защита от попытки загрузить огромный файл на клиенте
+
+// Уменьшает изображение до разумного размера и конвертирует в JPEG data:URL,
+// чтобы не раздувать базу и трафик сайта — карточки тарифов маленькие.
+function resizeImageToDataUrl(file){
+  return new Promise(function(resolve, reject){
+    if(!TIER_PHOTO_ALLOWED_TYPES.includes(file.type)){
+      reject(new Error('Поддерживаются только JPEG, PNG и WEBP'));
+      return;
+    }
+    if(file.size > TIER_PHOTO_MAX_SOURCE_BYTES){
+      reject(new Error('Файл слишком большой (максимум 15МБ)'));
+      return;
+    }
+    var img = new Image();
+    var url = URL.createObjectURL(file);
+    img.onload = function(){
+      URL.revokeObjectURL(url);
+      var maxDim = 1200;
+      var w = img.naturalWidth, h = img.naturalHeight;
+      if(w <= 0 || h <= 0){ reject(new Error('Не удалось прочитать изображение')); return; }
+      if(w > maxDim || h > maxDim){
+        if(w >= h){ h = Math.round(h * (maxDim / w)); w = maxDim; }
+        else { w = Math.round(w * (maxDim / h)); h = maxDim; }
+      }
+      var canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      var ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      // JPEG с компрессией — картинка карточки не требует лосслесс качества
+      var dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      resolve(dataUrl);
+    };
+    img.onerror = function(){ URL.revokeObjectURL(url); reject(new Error('Не удалось загрузить изображение')); };
+    img.src = url;
+  });
+}
+
 function buildTierForm(container, tier){
-  var t = tier || { id:'', name:'', flag:'', highlight:false, priceRub:0, priceUsdt:0, priceUah:0, priceStars:0, period:'/ месяц', desc:'', features:[''], ctaText:'Оформить', ctaLink:'#' };
+  var t = tier || { id:'', name:'', flag:'', highlight:false, priceRub:0, priceUsdt:0, priceUah:0, priceStars:0, period:'/ месяц', desc:'', features:[''], ctaText:'Оформить', ctaLink:'#', photos:[] };
   container.innerHTML = '';
+  // Текущий список фото формы — держим отдельно от DOM, рендерим заново при каждом изменении
+  var currentPhotos = Array.isArray(t.photos) ? t.photos.slice(0, TIER_PHOTOS_MAX) : [];
 
   function field(label, id, val, placeholder, type){
     return '<div class="field"><label>'+label+'</label><input type="'+(type||'text')+'" id="'+id+'" value="'+esc(val||'')+'" placeholder="'+(placeholder||'')+'"></div>';
@@ -2749,6 +3244,12 @@ function buildTierForm(container, tier){
   container.innerHTML +=
     field('Название', 'f-name', t.name, 'Базовый') +
     field('Пометка (под названием)', 'f-flag', t.flag, 'старт / чаще выбирают / максимум') +
+    '<div class="divider"></div>'+
+    '<div class="section-label">Фото тарифа (до '+TIER_PHOTOS_MAX+')</div>'+
+    '<div class="photo-uploader" id="f-photo-uploader"></div>'+
+    '<div class="photo-hint">JPEG, PNG или WEBP. Изображения автоматически уменьшаются перед загрузкой.</div>'+
+    '<input type="file" id="f-photo-input" accept="image/jpeg,image/png,image/webp" style="display:none">'+
+    '<div class="err" id="f-photo-err" style="display:none"></div>'+
     '<div class="divider"></div>'+
     '<div class="section-label">Цены</div>'+
     '<div class="price-grid">'+
@@ -2771,6 +3272,69 @@ function buildTierForm(container, tier){
     field('Ссылка кнопки', 'f-cta-link', t.ctaLink, 'https://...') +
     '<div class="divider"></div>'+
     '<div class="checkbox-row"><input type="checkbox" id="f-highlight" '+(t.highlight?'checked':'')+'><label for="f-highlight">Выделить как рекомендуемый</label></div>';
+
+  // ---- фото-аплоадер ----
+  var photoErr = container.querySelector('#f-photo-err');
+  var fileInput = container.querySelector('#f-photo-input');
+
+  function renderPhotoSlots(){
+    var wrap = container.querySelector('#f-photo-uploader');
+    wrap.innerHTML = '';
+    for(var i=0; i<TIER_PHOTOS_MAX; i++){
+      var slot = document.createElement('div');
+      if(currentPhotos[i]){
+        slot.className = 'photo-slot filled';
+        var img = document.createElement('img');
+        img.src = currentPhotos[i];
+        img.alt = 'Фото тарифа';
+        var rm = document.createElement('button');
+        rm.type = 'button';
+        rm.className = 'photo-slot-remove';
+        rm.title = 'Удалить фото';
+        rm.textContent = '✕';
+        (function(idx){
+          rm.onclick = function(){ currentPhotos.splice(idx, 1); renderPhotoSlots(); };
+        })(i);
+        slot.appendChild(img);
+        slot.appendChild(rm);
+      } else if(i === currentPhotos.length){
+        slot.className = 'photo-slot';
+        var addBtn = document.createElement('button');
+        addBtn.type = 'button';
+        addBtn.className = 'photo-slot-add';
+        addBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>Добавить</span>';
+        addBtn.onclick = function(){ photoErr.style.display='none'; fileInput.click(); };
+        slot.appendChild(addBtn);
+      } else {
+        slot.className = 'photo-slot';
+        slot.style.opacity = '.4';
+      }
+      wrap.appendChild(slot);
+    }
+  }
+  renderPhotoSlots();
+
+  fileInput.onchange = function(){
+    var file = fileInput.files && fileInput.files[0];
+    fileInput.value = ''; // позволяет выбрать тот же файл повторно
+    if(!file) return;
+    if(currentPhotos.length >= TIER_PHOTOS_MAX){
+      photoErr.textContent = 'Максимум ' + TIER_PHOTOS_MAX + ' фото на тариф';
+      photoErr.style.display = 'block';
+      return;
+    }
+    photoErr.style.display = 'none';
+    resizeImageToDataUrl(file).then(function(dataUrl){
+      currentPhotos.push(dataUrl);
+      renderPhotoSlots();
+    }).catch(function(e){
+      photoErr.textContent = e.message || 'Не удалось загрузить фото';
+      photoErr.style.display = 'block';
+    });
+  };
+
+  // Даём collectTierForm доступ к актуальному списку фото этой формы
+  container._getPhotos = function(){ return currentPhotos.slice(); };
 
   // features
   var feats = t.features.length ? t.features : [''];
@@ -2808,7 +3372,8 @@ function collectTierForm(container, id){
     desc:       container.querySelector('#f-desc').value.trim(),
     features:   features.length ? features : [''],
     ctaText:    container.querySelector('#f-cta-text').value.trim() || 'Оформить',
-    ctaLink:    container.querySelector('#f-cta-link').value.trim() || '#'
+    ctaLink:    container.querySelector('#f-cta-link').value.trim() || '#',
+    photos:     typeof container._getPhotos === 'function' ? container._getPhotos() : []
   };
 }
 
@@ -2835,6 +3400,7 @@ document.getElementById('editor-cancel').onclick = function(){
 
 document.getElementById('editor-save').onclick = function(){
   if(!editingId) return;
+  var btn = this;
   var form = document.getElementById('tier-editor-form');
   var updated = collectTierForm(form, editingId);
   var body = {
@@ -2842,8 +3408,10 @@ document.getElementById('editor-save').onclick = function(){
     priceRub: updated.priceRub, priceUsdt: updated.priceUsdt,
     priceUah: updated.priceUah, priceStars: updated.priceStars,
     period: updated.period, description: updated.desc,
-    features: updated.features, ctaText: updated.ctaText
+    features: updated.features, ctaText: updated.ctaText,
+    photos: updated.photos
   };
+  btn.disabled = true;
   apiFetch('/api/admin/tiers/' + editingId, { method: 'PUT', body: JSON.stringify(body) })
     .then(function(){
       tiers = tiers.map(function(t){ return t.id===editingId ? updated : t; });
@@ -2852,13 +3420,15 @@ document.getElementById('editor-save').onclick = function(){
       document.getElementById('tier-editor-wrap').style.display = 'none';
       renderAdminList();
       showToast('Тариф сохранён ✓');
-    }).catch(function(e){ showToast('Ошибка сохранения: ' + e.message); });
+    }).catch(function(e){ showToast('Ошибка сохранения: ' + e.message); })
+    .finally(function(){ btn.disabled = false; });
 };
 
 // ============================================================
 // NEW TIER
 // ============================================================
 document.getElementById('new-tier-save').onclick = function(){
+  var btn = this;
   var form = document.getElementById('new-tier-form');
   var t = collectTierForm(form, null);
   if(!t.name){ alert('Введите название'); return; }
@@ -2867,8 +3437,10 @@ document.getElementById('new-tier-save').onclick = function(){
     priceRub: t.priceRub, priceUsdt: t.priceUsdt,
     priceUah: t.priceUah, priceStars: t.priceStars,
     period: t.period, description: t.desc,
-    features: t.features, ctaText: t.ctaText
+    features: t.features, ctaText: t.ctaText,
+    photos: t.photos
   };
+  btn.disabled = true;
   apiFetch('/api/admin/tiers', { method: 'POST', body: JSON.stringify(body) })
     .then(function(data){
       t.id = data.id;
@@ -2877,7 +3449,8 @@ document.getElementById('new-tier-save').onclick = function(){
       renderAdminList();
       switchTab('tiers');
       showToast('Тариф создан ✓');
-    }).catch(function(e){ showToast('Ошибка создания: ' + e.message); });
+    }).catch(function(e){ showToast('Ошибка создания: ' + e.message); })
+    .finally(function(){ btn.disabled = false; });
 };
 
 // ============================================================
@@ -4509,6 +5082,12 @@ fetchBonusFromApi().then(function(b){
   renderBonus();
 }).catch(function(e){
   console.warn('Не удалось загрузить бонус-блок с API, используются локальные значения:', e);
+});
+fetchReviewsFromApi().then(function(r){
+  reviews = r;
+  renderReviewsPublic();
+}).catch(function(e){
+  console.warn('Не удалось загрузить отзывы с API:', e);
 });
 refreshOrdersBadge();
 </script>
