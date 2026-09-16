@@ -573,6 +573,20 @@ app.get('/api/bonus', ah(async (req, res) => {
   ok(res, { bonus });
 }));
 
+// GET /api/payment-methods — какие способы оплаты включены (публично, для главной страницы)
+const PAYMENT_METHOD_IDS = ['rub', 'uah', 'crypto', 'stars'];
+app.get('/api/payment-methods', ah(async (req, res) => {
+  const { rows } = await pool.query("SELECT key, value FROM settings WHERE key LIKE 'pm_%'");
+  const map = {};
+  rows.forEach(r => { map[r.key.replace('pm_', '')] = r.value; });
+  const methods = {};
+  PAYMENT_METHOD_IDS.forEach(id => {
+    // По умолчанию (если ещё не сохранялось) способ оплаты включён
+    methods[id] = map[id] === undefined ? true : map[id] === '1';
+  });
+  ok(res, { methods });
+}));
+
 // GET /api/orders/mine — статус заявок текущего посетителя (по clientId из localStorage)
 // Отдаём только безопасные поля: без file_data, ip, user_agent, contact — чтобы не спалить чужие данные
 // даже если кто-то подставит чужой clientId (он не секрет, но лучше не отдавать лишнее).
@@ -1326,6 +1340,33 @@ app.put('/api/admin/bonus', requireAdmin, ah(async (req, res) => {
         `INSERT INTO settings (key, value) VALUES ($1, $2)
          ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
         ['bonus_' + key, String(body[key])]
+      );
+    }
+  }
+  ok(res);
+}));
+
+// GET /api/admin/payment-methods — способы оплаты для админки (вкл/выкл)
+app.get('/api/admin/payment-methods', requireAdmin, ah(async (req, res) => {
+  const { rows } = await pool.query("SELECT key, value FROM settings WHERE key LIKE 'pm_%'");
+  const map = {};
+  rows.forEach(r => { map[r.key.replace('pm_', '')] = r.value; });
+  const methods = {};
+  PAYMENT_METHOD_IDS.forEach(id => {
+    methods[id] = map[id] === undefined ? true : map[id] === '1';
+  });
+  ok(res, { methods });
+}));
+
+// PUT /api/admin/payment-methods — админ включает/выключает способы оплаты
+app.put('/api/admin/payment-methods', requireAdmin, ah(async (req, res) => {
+  const body = bodyOf(req);
+  for (const id of PAYMENT_METHOD_IDS) {
+    if (body[id] !== undefined) {
+      await pool.query(
+        `INSERT INTO settings (key, value) VALUES ($1, $2)
+         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+        ['pm_' + id, body[id] ? '1' : '0']
       );
     }
   }
