@@ -69,7 +69,12 @@ INSERT INTO settings (key, value) VALUES
   ('req_uahCardsAccepted', 'Monobank, ПриватБанк, Ощадбанк, ПУМБ'),
   ('req_tonAddress',       'UQDBLmmdgdLdkHhANV0pNY7PnDKPo_sp9p51e1XtX2ChgWME'),
   ('req_trcAddress',       'TRvgVquVHPaddvWRJL7p5z5phM2sLSQqsf'),
-  ('req_starsNote',        'Напишите нам в Telegram — пришлём инвойс на нужную сумму прямо в чат.')
+  ('req_starsNote',        'Напишите нам в Telegram — пришлём инвойс на нужную сумму прямо в чат.'),
+  -- Способы оплаты: 1 = включён, 0 = выключен. По умолчанию все включены.
+  ('pm_rub',    '1'),
+  ('pm_uah',    '1'),
+  ('pm_crypto', '1'),
+  ('pm_stars',  '1')
 ON CONFLICT (key) DO NOTHING;
 
 -- Дефолтные тарифы
